@@ -34,6 +34,9 @@ FLAGS = flags.FLAGS
 flags.DEFINE_boolean('cerr', False,
                      'Set to true to collect data based on .mat CERR files.')
 
+flags.DEFINE_integer('num_shards', 2,
+                     'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
+
 flags.DEFINE_string('rawdata_dir', r'U:\DATA\datasets\raw_datasets',
                     'absolute path to where raw data is collected from.')
 
@@ -224,11 +227,11 @@ def create_tfrecord(structure_path):
 
         dataset_splits = glob.glob(os.path.join(file_base, '*.txt'))
         for dataset_split in dataset_splits:
-            _convert_dataset(dataset_split)
+            _convert_dataset(dataset_split, FLAGS.num_shards, structure_path)
 
     return
 
-def _convert_dataset(dataset_split, _NUM_SHARDS):
+def _convert_dataset(dataset_split, _NUM_SHARDS, structure_path):
   """Converts the specified dataset split to TFRecord format.
 
   Args:
@@ -248,7 +251,7 @@ def _convert_dataset(dataset_split, _NUM_SHARDS):
 
   for shard_id in range(_NUM_SHARDS):
     output_filename = os.path.join(
-        FLAGS.output_dir,
+        structure_path,
         '%s-%05d-of-%05d.tfrecord' % (dataset, shard_id, _NUM_SHARDS))
     with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
       start_idx = shard_id * num_per_shard
