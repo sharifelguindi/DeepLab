@@ -87,12 +87,12 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
 
 _BLADDER_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 414,
-        'val_ax': 62,
-        'train_cor': 2816,
-        'val_cor': 347,
-        'train_sag': 2414,
-        'val_sag': 297,
+        'train_ax': 431,
+        'val_ax': 45,
+        'train_cor': 2812,
+        'val_cor': 351,
+        'train_sag': 2468,
+        'val_sag': 243,
     },
     num_classes=2,
     ignore_label=255,
@@ -100,12 +100,38 @@ _BLADDER_SEG_INFORMATION = DatasetDescriptor(
 
 _RECTUM_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 379,
-        'val_ax': 60,
-        'train_cor': 2808,
-        'val_cor': 347,
-        'train_sag': 2409,
-        'val_sag': 297,
+        'train_ax': 590,
+        'val_ax': 65,
+        'train_cor': 1654,
+        'val_cor': 165,
+        'train_sag': 1355,
+        'val_sag': 137,
+    },
+    num_classes=2,
+    ignore_label=255,
+)
+
+_BLADNECK_SEG_INFORMATION = DatasetDescriptor(
+    splits_to_sizes={
+        'train_ax': 129,
+        'val_ax': 14,
+        'train_cor': 1305,
+        'val_cor': 163,
+        'train_sag': 151,
+        'val_sag': 170,
+    },
+    num_classes=2,
+    ignore_label=255,
+)
+
+_URETHRA_SEG_INFORMATION = DatasetDescriptor(
+    splits_to_sizes={
+        'train_ax': 374,
+        'val_ax': 43,
+        'train_cor': 701,
+        'val_cor': 94,
+        'train_sag': 325,
+        'val_sag': 75,
     },
     num_classes=2,
     ignore_label=255,
@@ -116,6 +142,8 @@ _DATASETS_INFORMATION = {
     'pascal_voc_seg': _PASCAL_VOC_SEG_INFORMATION,
     'bladder': _BLADDER_SEG_INFORMATION,
     'rectum': _RECTUM_SEG_INFORMATION,
+    'bladder_neck': _BLADNECK_SEG_INFORMATION,
+    'urethra': _URETHRA_SEG_INFORMATION,
 }
 
 # Default file pattern of TFRecord of TensorFlow Example.

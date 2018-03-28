@@ -22,6 +22,9 @@ from scipy.misc import imsave, imrotate
 import tensorflow as tf
 import h5py
 import sys
+import glob
+import math
+import build_data
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -37,10 +40,10 @@ flags.DEFINE_string('rawdata_dir', r'U:\DATA\datasets\raw_datasets',
 flags.DEFINE_string('save_dir', 'datasets',
                     'absolute path to where processed data is saved.')
 
-flags.DEFINE_string('structure', 'bladder',
+flags.DEFINE_string('structure', 'bladder_neck',
                     'string name of structure to export')
 
-flags.DEFINE_string('structure_match', 'Bladder_O',
+flags.DEFINE_string('structure_match', 'Bladder_neck',
                     'string name of structure to export')
 
 def getdataS(file):
@@ -92,11 +95,11 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
         data_vol = np.rot90(data_vol, axes=(2, 0))
         data_seg = np.rot90(data_seg, axes=(2, 0))
 
+    ## Verify size of scan data and mask data equivalent
     size = data_vol.shape
     size_msk = data_seg.shape
-
     if size == size_msk:
-        # Axial Slices
+        # Loop through axial slices, make 3-channel scan, single channel mask
         for i in range(0,size[2]):
             img = data_vol[:,:,i]
             contour = data_seg[:,:,i]
@@ -109,15 +112,15 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_img_1[:,:,2] = img
 
             stacked_img_2[:,:] = contour
-            unique, counts = numpy.unique(stacked_img_2, return_counts=True)
+            unique, counts = np.unique(stacked_img_2, return_counts=True)
             vals = dict(zip(unique, counts))
-            if(vals[1]) > 0):
+            if 1 in vals:
                 img_name = os.path.join('PNGImages','ax' + str(p_num) + '_' + str(i) + '.png')
                 gt_name = os.path.join('SegmentationClass','ax' + str(p_num) + '_' + str(i) + '.png')
                 imsave(os.path.join(save_path,img_name), stacked_img_1)
                 imsave(os.path.join(save_path,gt_name), stacked_img_2)
 
-        # Sagittal
+        # Loop through sagittal slices, make 3-channel scan, single channel mask, pad image to axial size
         for i in range(0,size[1]):
             img_sag = data_vol[:,i,:]
             contour_sag = data_seg[:,i,:]
@@ -132,15 +135,15 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_sag_1[:,:,2] = img_sag
 
             stacked_sag_2[:,:] = contour_sag
-            unique, counts = numpy.unique(stacked_sag_2, return_counts=True)
+            unique, counts = np.unique(stacked_sag_2, return_counts=True)
             vals = dict(zip(unique, counts))
-            if(vals[1]) > 0):
+            if 1 in vals:
                 img_name = os.path.join('PNGImages','sag' + str(p_num) + '_' + str(i) + '.png')
                 gt_name = os.path.join('SegmentationClass','sag' + str(p_num) + '_' + str(i) + '.png')
                 imsave(os.path.join(save_path,img_name), stacked_sag_1)
                 imsave(os.path.join(save_path,gt_name), stacked_sag_2)
 
-        # Coronal
+        # Loop through coronal slices, make 3-channel scan, single channel mask, pad image to axial size
         for i in range(0,size[0]):
             img_cor = data_vol[i,:,:]
             contour_cor = data_seg[i,:,:]
@@ -155,9 +158,9 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_cor_1[:,:,2] = img_cor
 
             stacked_cor_2[:,:] = contour_cor
-            unique, counts = numpy.unique(stacked_cor_2, return_counts=True)
+            unique, counts = np.unique(stacked_cor_2, return_counts=True)
             vals = dict(zip(unique, counts))
-            if(vals[1]) > 0):
+            if 1 in vals:
                 img_name = os.path.join('PNGImages','cor' + str(p_num) + '_' + str(i) + '.png')
                 gt_name = os.path.join('SegmentationClass','cor' + str(p_num) + '_' + str(i) + '.png')
                 imsave(os.path.join(save_path,img_name), stacked_cor_1)
@@ -178,12 +181,103 @@ def find_file(name, path):
         if name in files:
             return os.path.join(root, name)
 
-def create_tfrecord(fileList):
+def create_tfrecord(structure_path):
+
+    planeList = ['ax', 'cor', 'sag']
+    planeDir = ['Axial', 'Coronal', 'Sag']
+    filename_train = 'train_'
+    filename_val = 'val_'
+
+    i = 0
+    for plane in planeList:
+
+        file_base = os.path.join(structure_path, 'processed', 'ImageSets', planeDir[i])
+        if not os.path.exists(file_base):
+            os.makedirs(file_base)
+        f = open(os.path.join(file_base, filename_train + plane + '.txt'), 'a')
+        f.truncate()
+        k = 0
+        path = os.path.join(structure_path, 'processed', 'PNGImages')
+        pattern = plane + '*.png'
+        files = find(pattern, path)
+        for file in files:
+            if file.find(plane) > 0 and (file.find(plane + '1_') < 1 and file.find(plane + '2_') < 1):
+                h = file.split(os.sep)
+                f.write(h[-1].replace('.png','') +'\n')
+                k = k + 1
+        f.close()
+        print(filename_train + plane, k)
+
+        if not os.path.exists(file_base):
+            os.makedirs(file_base)
+        f = open(os.path.join(file_base, filename_val + plane + '.txt'), 'a')
+        f.truncate()
+        k = 0
+        for file in files:
+            if file.find(plane) > 0 and (file.find(plane + '1_') > 0 or file.find(plane + '2_') > 0):
+                h = file.split(os.sep)
+                f.write(h[-1].replace('.png','') +'\n')
+                k = k + 1
+        f.close()
+        print(filename_val + plane, k)
+        i = i + 1
+
+        dataset_splits = glob.glob(os.path.join(file_base, '*.txt'))
+        for dataset_split in dataset_splits:
+            _convert_dataset(dataset_split)
 
     return
 
-def main(unused_argv):
+def _convert_dataset(dataset_split, _NUM_SHARDS):
+  """Converts the specified dataset split to TFRecord format.
 
+  Args:
+    dataset_split: The dataset split (e.g., train, test).
+
+  Raises:
+    RuntimeError: If loaded image and label have different shape.
+  """
+  dataset = os.path.basename(dataset_split)[:-4]
+  sys.stdout.write('Processing ' + dataset)
+  filenames = [x.strip('\n') for x in open(dataset_split, 'r')]
+  num_images = len(filenames)
+  num_per_shard = int(math.ceil(num_images / float(_NUM_SHARDS)))
+
+  image_reader = build_data.ImageReader('png', channels=3)
+  label_reader = build_data.ImageReader('png', channels=1)
+
+  for shard_id in range(_NUM_SHARDS):
+    output_filename = os.path.join(
+        FLAGS.output_dir,
+        '%s-%05d-of-%05d.tfrecord' % (dataset, shard_id, _NUM_SHARDS))
+    with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+      start_idx = shard_id * num_per_shard
+      end_idx = min((shard_id + 1) * num_per_shard, num_images)
+      for i in range(start_idx, end_idx):
+        sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
+            i + 1, len(filenames), shard_id))
+        sys.stdout.flush()
+        # Read the image.
+        image_filename = os.path.join(
+            FLAGS.image_folder, filenames[i] + '.' + FLAGS.image_format)
+        image_data = tf.gfile.FastGFile(image_filename, 'r').read()
+        height, width = image_reader.read_image_dims(image_data)
+        # Read the semantic segmentation annotation.
+        seg_filename = os.path.join(
+            FLAGS.semantic_segmentation_folder,
+            filenames[i] + '.' + FLAGS.label_format)
+        seg_data = tf.gfile.FastGFile(seg_filename, 'r').read()
+        seg_height, seg_width = label_reader.read_image_dims(seg_data)
+        if height != seg_height or width != seg_width:
+          raise RuntimeError('Shape mismatched between image and label.')
+        # Convert to tf example.
+        example = build_data.image_seg_to_tfexample(
+            image_data, filenames[i], height, width, seg_data)
+        tfrecord_writer.write(example.SerializeToString())
+    sys.stdout.write('\n')
+    sys.stdout.flush()
+
+def main(unused_argv):
     data_path = FLAGS.rawdata_dir
 
     if FLAGS.cerr:
@@ -201,6 +295,7 @@ def main(unused_argv):
                 p_num = p_num + 1
         else:
             print("No CERR .mat files found")
+            return
 
     else:
         ## Collect list of structure set files in specified path dir, "RS_Files".  Relies on structure
@@ -296,16 +391,16 @@ def main(unused_argv):
                                         z = int(np.round(z))
                                         im_mask[:,:,z] = mask
 
-                        sys.stdout.write('\r>> Exporting patient %d of %d' % (p_num+1, len(RS_Files) - 1))
+                        sys.stdout.write('\r>> Exporting patient %d of %d' % (p_num+1, len(RS_Files)))
                         data_export(im_data, im_mask, FLAGS.save_dir, p_num, FLAGS.cerr, FLAGS.structure)
 
                     ## Iterate over contour
                     k = k + 1
-
-
+            print('\n')
+            print("Update segemntation_dataset.py with new class and values")
+            create_tfrecord(os.path.join(FLAGS.save_dir, FLAGS.structure))
         else:
             print('Directory specified contains no RS files')
-
 
 if __name__ == '__main__':
   # flags.mark_flag_as_required('rawdata_dir')

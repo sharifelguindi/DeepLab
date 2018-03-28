@@ -34,7 +34,7 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-WORK_DIR="rectum"
+WORK_DIR="datasets/rectum"
 # Root path for PASCAL VOC 2012 dataset.
 PASCAL_ROOT="${WORK_DIR}/processed"
 

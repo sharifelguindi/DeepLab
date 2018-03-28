@@ -81,7 +81,6 @@ tf.app.flags.DEFINE_string(
 
 _NUM_SHARDS = 4
 
-
 def _convert_dataset(dataset_split):
   """Converts the specified dataset split to TFRecord format.
 

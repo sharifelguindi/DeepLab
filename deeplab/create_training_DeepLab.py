@@ -20,13 +20,14 @@ def create_train_val(structure_path, num_examples, split):
     for plane in planeList:
 
         file_base = os.path.join(structure_path, 'processed', 'ImageSets',planeDir[i])
+        if not os.path.exists(file_base):
+            os.makedirs(file_base)
         f = open(os.path.join(file_base, filename_train + plane + '.txt'), 'a')
         f.truncate()
         k = 0
         path = os.path.join(structure_path, 'processed', 'PNGImages')
         pattern = plane + '*.png'
         files = find(pattern, path)
-
         for file in files:
             if file.find(plane) > 0 and (file.find(plane + '1_') < 1 and file.find(plane + '2_') < 1):
                 h = file.split(os.sep)
@@ -36,6 +37,8 @@ def create_train_val(structure_path, num_examples, split):
         print(filename_train + plane, k)
 
         file_base = os.path.join(structure_path, 'processed', 'ImageSets', planeDir[i])
+        if not os.path.exists(file_base):
+            os.makedirs(file_base)
         f = open(os.path.join(file_base, filename_val + plane + '.txt'), 'a')
         f.truncate()
         k = 0
@@ -47,9 +50,10 @@ def create_train_val(structure_path, num_examples, split):
         f.close()
         print(filename_val + plane, k)
         i = i + 1
+    return
 
 def main():
-    structure_path = 'bladder'
+    structure_path = 'datasets\\urethra'
     num_examples = 20
     split = 0.8
     create_train_val(structure_path, num_examples, split)
