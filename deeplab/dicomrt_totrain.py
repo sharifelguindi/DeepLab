@@ -37,7 +37,7 @@ flags.DEFINE_boolean('cerr', False,
 flags.DEFINE_integer('num_shards', 2,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', r'U:\DATA\datasets\raw_datasets',
+flags.DEFINE_string('rawdata_dir', '/media/sharif/Data/fcn/Data',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
@@ -227,11 +227,11 @@ def create_tfrecord(structure_path):
 
         dataset_splits = glob.glob(os.path.join(file_base, '*.txt'))
         for dataset_split in dataset_splits:
-            _convert_dataset(dataset_split, FLAGS.num_shards, structure_path)
+            _convert_dataset(dataset_split, FLAGS.num_shards, structure_path, plane)
 
     return
 
-def _convert_dataset(dataset_split, _NUM_SHARDS, structure_path):
+def _convert_dataset(dataset_split, _NUM_SHARDS, structure_path, plane):
   """Converts the specified dataset split to TFRecord format.
 
   Args:
@@ -240,6 +240,13 @@ def _convert_dataset(dataset_split, _NUM_SHARDS, structure_path):
   Raises:
     RuntimeError: If loaded image and label have different shape.
   """
+  image_folder = os.path.join(structure_path, 'processed', 'PNGImages')
+  semantic_segmentation_folder = os.path.join(structure_path, 'processed', 'SegmentationClass')
+  image_format = label_format = 'png'
+
+  if not os.path.exists(os.path.join(structure_path, 'tfrecord'+ '_' + plane)):
+      os.makedirs(os.path.join(structure_path, 'tfrecord'+ '_' + plane))
+
   dataset = os.path.basename(dataset_split)[:-4]
   sys.stdout.write('Processing ' + dataset)
   filenames = [x.strip('\n') for x in open(dataset_split, 'r')]
@@ -251,7 +258,7 @@ def _convert_dataset(dataset_split, _NUM_SHARDS, structure_path):
 
   for shard_id in range(_NUM_SHARDS):
     output_filename = os.path.join(
-        structure_path,
+        structure_path, 'tfrecord'+ '_' + plane,
         '%s-%05d-of-%05d.tfrecord' % (dataset, shard_id, _NUM_SHARDS))
     with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
       start_idx = shard_id * num_per_shard
@@ -262,13 +269,13 @@ def _convert_dataset(dataset_split, _NUM_SHARDS, structure_path):
         sys.stdout.flush()
         # Read the image.
         image_filename = os.path.join(
-            FLAGS.image_folder, filenames[i] + '.' + FLAGS.image_format)
+            image_folder, filenames[i] + '.' + image_format)
         image_data = tf.gfile.FastGFile(image_filename, 'r').read()
         height, width = image_reader.read_image_dims(image_data)
         # Read the semantic segmentation annotation.
         seg_filename = os.path.join(
-            FLAGS.semantic_segmentation_folder,
-            filenames[i] + '.' + FLAGS.label_format)
+            semantic_segmentation_folder,
+            filenames[i] + '.' + label_format)
         seg_data = tf.gfile.FastGFile(seg_filename, 'r').read()
         seg_height, seg_width = label_reader.read_image_dims(seg_data)
         if height != seg_height or width != seg_width:
@@ -395,6 +402,7 @@ def main(unused_argv):
                                         im_mask[:,:,z] = mask
 
                         sys.stdout.write('\r>> Exporting patient %d of %d' % (p_num+1, len(RS_Files)))
+                        sys.stdout.flush()
                         data_export(im_data, im_mask, FLAGS.save_dir, p_num, FLAGS.cerr, FLAGS.structure)
 
                     ## Iterate over contour

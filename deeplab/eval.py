@@ -19,10 +19,10 @@ See model.py for more details and usage.
 
 import math
 import tensorflow as tf
-from deeplab import common
-from deeplab import model
-from deeplab.datasets import segmentation_dataset
-from deeplab.utils import input_generator
+import common
+import model
+import segmentation_dataset
+from utils import input_generator
 
 slim = tf.contrib.slim
 
@@ -43,7 +43,7 @@ flags.DEFINE_string('checkpoint_dir', None, 'Directory of model checkpoints.')
 flags.DEFINE_integer('eval_batch_size', 1,
                      'The number of images in each batch during evaluation.')
 
-flags.DEFINE_multi_integer('eval_crop_size', [513, 513],
+flags.DEFINE_multi_integer('eval_crop_size', [384, 384],
                            'Image crop size [height, width] for evaluation.')
 
 flags.DEFINE_integer('eval_interval_secs', 60 * 5,
@@ -95,9 +95,9 @@ def main(unused_argv):
         dataset,
         FLAGS.eval_crop_size,
         FLAGS.eval_batch_size,
-        min_resize_value=FLAGS.min_resize_value,
-        max_resize_value=FLAGS.max_resize_value,
-        resize_factor=FLAGS.resize_factor,
+        min_resize_value=None,
+        max_resize_value=None,
+        resize_factor=None,
         dataset_split=FLAGS.eval_split,
         is_training=False,
         model_variant=FLAGS.model_variant)

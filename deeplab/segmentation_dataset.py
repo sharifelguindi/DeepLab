@@ -87,12 +87,12 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
 
 _BLADDER_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 431,
-        'val_ax': 45,
-        'train_cor': 2812,
-        'val_cor': 351,
-        'train_sag': 2468,
-        'val_sag': 243,
+        'train_ax': 437,
+        'val_ax': 39,
+        'train_cor': 2851,
+        'val_cor': 312,
+        'train_sag': 2456,
+        'val_sag': 255,
     },
     num_classes=2,
     ignore_label=255,
@@ -100,12 +100,12 @@ _BLADDER_SEG_INFORMATION = DatasetDescriptor(
 
 _RECTUM_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 590,
-        'val_ax': 65,
-        'train_cor': 1654,
-        'val_cor': 165,
-        'train_sag': 1355,
-        'val_sag': 137,
+        'train_ax': 594,
+        'val_ax': 61,
+        'train_cor': 1633,
+        'val_cor': 186,
+        'train_sag': 1363,
+        'val_sag': 129,
     },
     num_classes=2,
     ignore_label=255,
@@ -115,9 +115,9 @@ _BLADNECK_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
         'train_ax': 129,
         'val_ax': 14,
-        'train_cor': 1305,
-        'val_cor': 163,
-        'train_sag': 151,
+        'train_cor': 1302,
+        'val_cor': 166,
+        'train_sag': 1515,
         'val_sag': 170,
     },
     num_classes=2,
@@ -126,12 +126,12 @@ _BLADNECK_SEG_INFORMATION = DatasetDescriptor(
 
 _URETHRA_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 374,
-        'val_ax': 43,
-        'train_cor': 701,
-        'val_cor': 94,
-        'train_sag': 325,
-        'val_sag': 75,
+        'train_ax': 380,
+        'val_ax': 37,
+        'train_cor': 716,
+        'val_cor': 78,
+        'train_sag': 368,
+        'val_sag': 32,
     },
     num_classes=2,
     ignore_label=255,
@@ -168,7 +168,7 @@ def get_dataset(dataset_name, split_name, dataset_dir):
   Raises:
     ValueError: if the dataset_name or split_name is not recognized.
   """
-  print(_DATASETS_INFORMATION)
+  print(dataset_name)
   if dataset_name not in _DATASETS_INFORMATION:
     raise ValueError('The specified dataset is not supported yet.')
 

@@ -18,11 +18,11 @@ See model.py for more details and usage.
 """
 
 import tensorflow as tf
-from deeplab import common
-from deeplab import model
-from deeplab.datasets import segmentation_dataset
-from deeplab.utils import input_generator
-from deeplab.utils import train_utils
+import common
+import model
+import segmentation_dataset
+from utils import input_generator
+from utils import train_utils
 from deployment import model_deploy
 
 slim = tf.contrib.slim
@@ -73,7 +73,7 @@ flags.DEFINE_enum('learning_policy', 'poly', ['poly', 'step'],
 
 # Use 0.007 when training on PASCAL augmented training set, train_aug. When
 # fine-tuning on PASCAL trainval set, use learning rate=0.0001.
-flags.DEFINE_float('base_learning_rate', .007,
+flags.DEFINE_float('base_learning_rate', .01,
                    'The base learning rate for model training.')
 
 flags.DEFINE_float('learning_rate_decay_factor', 0.1,
@@ -234,7 +234,7 @@ def main(unused_argv):
           clone_batch_size,
           min_resize_value=FLAGS.min_resize_value,
           max_resize_value=FLAGS.max_resize_value,
-          resize_factor=FLAGS.resize_factor,
+          resize_factor=FLAGS.max_resize_value,
           min_scale_factor=FLAGS.min_scale_factor,
           max_scale_factor=FLAGS.max_scale_factor,
           scale_factor_step_size=FLAGS.scale_factor_step_size,

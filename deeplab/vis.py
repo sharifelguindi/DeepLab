@@ -22,11 +22,11 @@ import os.path
 import time
 import numpy as np
 import tensorflow as tf
-from deeplab import common
-from deeplab import model
-from deeplab.datasets import segmentation_dataset
-from deeplab.utils import input_generator
-from deeplab.utils import save_annotation
+import common
+import model
+import segmentation_dataset
+from utils import input_generator
+from utils import save_annotation
 
 slim = tf.contrib.slim
 
@@ -211,7 +211,7 @@ def main(unused_argv):
                                   FLAGS.vis_batch_size,
                                   min_resize_value=FLAGS.min_resize_value,
                                   max_resize_value=FLAGS.max_resize_value,
-                                  resize_factor=FLAGS.resize_factor,
+                                  resize_factor=None,
                                   dataset_split=FLAGS.vis_split,
                                   is_training=False,
                                   model_variant=FLAGS.model_variant)
@@ -237,27 +237,27 @@ def main(unused_argv):
           add_flipped_images=FLAGS.add_flipped_images)
     predictions = predictions[common.OUTPUT_TYPE]
 
-    if FLAGS.min_resize_value and FLAGS.max_resize_value:
-      # Only support batch_size = 1, since we assume the dimensions of original
-      # image after tf.squeeze is [height, width, 3].
-      assert FLAGS.vis_batch_size == 1
-
-      # Reverse the resizing and padding operations performed in preprocessing.
-      # First, we slice the valid regions (i.e., remove padded region) and then
-      # we reisze the predictions back.
-      original_image = tf.squeeze(samples[common.ORIGINAL_IMAGE])
-      original_image_shape = tf.shape(original_image)
-      predictions = tf.slice(
-          predictions,
-          [0, 0, 0],
-          [1, original_image_shape[0], original_image_shape[1]])
-      resized_shape = tf.to_int32([tf.squeeze(samples[common.HEIGHT]),
-                                   tf.squeeze(samples[common.WIDTH])])
-      predictions = tf.squeeze(
-          tf.image.resize_images(tf.expand_dims(predictions, 3),
-                                 resized_shape,
-                                 method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
-                                 align_corners=True), 3)
+    # if FLAGS.min_resize_value and FLAGS.max_resize_value:
+    #   # Only support batch_size = 1, since we assume the dimensions of original
+    #   # image after tf.squeeze is [height, width, 3].
+    #   assert FLAGS.vis_batch_size == 1
+    #
+    #   # Reverse the resizing and padding operations performed in preprocessing.
+    #   # First, we slice the valid regions (i.e., remove padded region) and then
+    #   # we reisze the predictions back.
+    #   original_image = tf.squeeze(samples[common.ORIGINAL_IMAGE])
+    #   original_image_shape = tf.shape(original_image)
+    #   predictions = tf.slice(
+    #       predictions,
+    #       [0, 0, 0],
+    #       [1, original_image_shape[0], original_image_shape[1]])
+    #   resized_shape = tf.to_int32([tf.squeeze(samples[common.HEIGHT]),
+    #                                tf.squeeze(samples[common.WIDTH])])
+    #   predictions = tf.squeeze(
+    #       tf.image.resize_images(tf.expand_dims(predictions, 3),
+    #                              resized_shape,
+    #                              method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+    #                              align_corners=True), 3)
 
     tf.train.get_or_create_global_step()
     saver = tf.train.Saver(slim.get_variables_to_restore())
