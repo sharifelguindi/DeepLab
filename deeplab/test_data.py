@@ -21,13 +21,16 @@ flags.DEFINE_boolean('cerr', False,
 flags.DEFINE_string('graph_name', 'frozen_inference_graph',
                     'absolute path to where raw data is collected from.')
 
-flags.DEFINE_string('data_dir', 'G:\\Projects\\DeepLab\\deeplab\\datasets\\test\\p22\\',
+flags.DEFINE_string('data_dir', 'datasets/test/p19/',
                     'absolute path to where raw data is collected from.')
 
-flags.DEFINE_string('save_dir', 'G:\\Projects\\DeepLab\\deeplab\\datasets\\test\\p22\\',
+flags.DEFINE_string('save_dir', 'datasets/test/p19/',
                     'absolute path to where processed data is saved.')
 
 flags.DEFINE_string('model_dir', os.path.join('datasets','rectum','exp'),
+                    'absolute path to where processed data is saved.')
+
+flags.DEFINE_string('model_val', '032818',
                     'absolute path to where processed data is saved.')
 
 flags.DEFINE_string('structure', 'rectum',
@@ -139,7 +142,7 @@ def create_rtstruct(RS_Files, im_mask_ax, im_mask_sag, im_mask_cor):
     ss_referenceclass = ss.ROIContours[0].Contours[0].ContourImageSequence[0].ReferencedSOPClassUID
     for item in ss.StructureSetROISequence[:]:
         ## Check if structure is equal to specified structure name
-        if item.ROIName == contour_name:
+        if item.ROIName == FLAGS.structure_match:
             ## ss_maxslice: determines maximum number of image slices contour lives on
             ss_maxslice = len(ss.ROIContours[k].Contours)
             ## pattern collects referenced SOP for DICOM collection, searched dir for CT_files list
@@ -273,10 +276,10 @@ def main(unused_argv):
     ## Defined Imaging planes
     planeList = ['axial', 'coronal', 'saggital']
     size = im_data.shape
-
+    model_val = FLAGS.model_val
     ## Loop through each plane and load subsequence model
     for plane in planeList:
-        model_path = os.path.join(FLAGS.model_dir, plane, 'export', 'frozen_inference_graph.pb')
+        model_path = os.path.join(FLAGS.model_dir, plane + model_val, 'export', 'frozen_inference_graph.pb')
         model = DeepLabModel(model_path)
         if plane == 'axial':
             print('Computing Axial Model...')

@@ -48,275 +48,281 @@ cd "${WORK_DIR}/${DATASET_DIR}"
 cd "${CURRENT_DIR}"
 
 # Train 2000 iterations.
-NUM_ITERATIONS=9000
+NUM_ITERATIONS=13005
 DATE="032818"
 CROP_SIZE=384
 # Set up the working directories.
-PASCAL_FOLDER="rectum"
-EXP_FOLDER="exp/axial${DATE}"
-TRAIN_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/train"
-EVAL_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/eval"
-VIS_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/vis"
-EXPORT_DIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/export"
-mkdir -p "${TRAIN_LOGDIR}"
-mkdir -p "${EVAL_LOGDIR}"
-mkdir -p "${VIS_LOGDIR}"
-mkdir -p "${EXPORT_DIR}"
+
+while [  $NUM_ITERATIONS -lt 15006 ]; do
+
+    PASCAL_FOLDER="bladder"
+    EXP_FOLDER="exp/axial${DATE}"
+    TRAIN_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/train"
+    EVAL_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/eval"
+    VIS_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/vis"
+    EXPORT_DIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/export"
+    mkdir -p "${TRAIN_LOGDIR}"
+    mkdir -p "${EVAL_LOGDIR}"
+    mkdir -p "${VIS_LOGDIR}"
+    mkdir -p "${EXPORT_DIR}"
 
 
-PASCAL_DATASET="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/tfrecord_ax"
+    PASCAL_DATASET="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/tfrecord_ax"
 
-python "${WORK_DIR}"/train.py \
-  --logtostderr \
-  --train_split="train_ax" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --train_crop_size="${CROP_SIZE}" \
-  --train_crop_size="${CROP_SIZE}" \
-  --train_batch_size=4 \
-  --training_number_of_steps="${NUM_ITERATIONS}" \
-  --fine_tune_batch_norm=false \
-  --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
-  --train_logdir="${TRAIN_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --dataset="${PASCAL_FOLDER}"
+    python "${WORK_DIR}"/train.py \
+      --logtostderr \
+      --train_split="train_ax" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --train_crop_size="${CROP_SIZE}" \
+      --train_crop_size="${CROP_SIZE}" \
+      --train_batch_size=4 \
+      --training_number_of_steps="${NUM_ITERATIONS}" \
+      --fine_tune_batch_norm=false \
+      --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
+      --train_logdir="${TRAIN_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --dataset="${PASCAL_FOLDER}"
 
-# Visualize the results.
-python "${WORK_DIR}"/vis.py \
-  --logtostderr \
-  --vis_split="val_ax" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --vis_crop_size="${CROP_SIZE}" \
-  --vis_crop_size="${CROP_SIZE}" \
-  --checkpoint_dir="${TRAIN_LOGDIR}" \
-  --vis_logdir="${VIS_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --max_number_of_iterations=1 \
-  --dataset="${PASCAL_FOLDER}"
+    # Visualize the results.
+    python "${WORK_DIR}"/vis.py \
+      --logtostderr \
+      --vis_split="val_ax" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --vis_crop_size="${CROP_SIZE}" \
+      --vis_crop_size="${CROP_SIZE}" \
+      --checkpoint_dir="${TRAIN_LOGDIR}" \
+      --vis_logdir="${VIS_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --max_number_of_iterations=1 \
+      --dataset="${PASCAL_FOLDER}"
 
-python "${WORK_DIR}"/eval.py \
-  --logtostderr \
-  --eval_split="val_ax" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --eval_crop_size="${CROP_SIZE}" \
-  --eval_crop_size="${CROP_SIZE}" \
-  --checkpoint_dir="${TRAIN_LOGDIR}" \
-  --eval_logdir="${EVAL_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --dataset="${PASCAL_FOLDER}" \
-  --max_number_of_evaluations=1 \
+    python "${WORK_DIR}"/eval.py \
+      --logtostderr \
+      --eval_split="val_ax" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --eval_crop_size="${CROP_SIZE}" \
+      --eval_crop_size="${CROP_SIZE}" \
+      --checkpoint_dir="${TRAIN_LOGDIR}" \
+      --eval_logdir="${EVAL_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --dataset="${PASCAL_FOLDER}" \
+      --max_number_of_evaluations=1 \
 
-## Export the trained checkpoint.
-CKPT_PATH="${TRAIN_LOGDIR}/model.ckpt-${NUM_ITERATIONS}"
-EXPORT_PATH="${EXPORT_DIR}/frozen_inference_graph.pb"
+    ## Export the trained checkpoint.
+    CKPT_PATH="${TRAIN_LOGDIR}/model.ckpt-${NUM_ITERATIONS}"
+    EXPORT_PATH="${EXPORT_DIR}/frozen_inference_graph.pb"
 
-python "${WORK_DIR}"/export_model.py \
-  --logtostderr \
-  --checkpoint_path="${CKPT_PATH}" \
-  --export_path="${EXPORT_PATH}" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --num_classes=2 \
-  --crop_size="${CROP_SIZE}" \
-  --crop_size="${CROP_SIZE}" \
-  --inference_scales=1.0
+    python "${WORK_DIR}"/export_model.py \
+      --logtostderr \
+      --checkpoint_path="${CKPT_PATH}" \
+      --export_path="${EXPORT_PATH}" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --num_classes=2 \
+      --crop_size="${CROP_SIZE}" \
+      --crop_size="${CROP_SIZE}" \
+      --inference_scales=1.0
 
-########################################################
-########################################################
+    ########################################################
+    ########################################################
 
-# Set up the working directories.
-EXP_FOLDER="exp/saggital${DATE}"
-TRAIN_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/train"
-EVAL_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/eval"
-VIS_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/vis"
-EXPORT_DIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/export"
-mkdir -p "${TRAIN_LOGDIR}"
-mkdir -p "${EVAL_LOGDIR}"
-mkdir -p "${VIS_LOGDIR}"
-mkdir -p "${EXPORT_DIR}"
-
-
-PASCAL_DATASET="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/tfrecord_sag"
-
-# Train 10 iterations.
-python "${WORK_DIR}"/train.py \
-  --logtostderr \
-  --train_split="train_sag" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --train_crop_size="${CROP_SIZE}" \
-  --train_crop_size="${CROP_SIZE}" \
-  --train_batch_size=4 \
-  --training_number_of_steps="${NUM_ITERATIONS}" \
-  --fine_tune_batch_norm=False \
-  --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
-  --train_logdir="${TRAIN_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --dataset="${PASCAL_FOLDER}"
-
-# Visualize the results.
-python "${WORK_DIR}"/vis.py \
-  --logtostderr \
-  --vis_split="val_sag" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --vis_crop_size="${CROP_SIZE}" \
-  --vis_crop_size="${CROP_SIZE}" \
-  --checkpoint_dir="${TRAIN_LOGDIR}" \
-  --vis_logdir="${VIS_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --max_number_of_iterations=1 \
-  --dataset="${PASCAL_FOLDER}"
-
-python "${WORK_DIR}"/eval.py \
-  --logtostderr \
-  --eval_split="val_sag" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --eval_crop_size="${CROP_SIZE}" \
-  --eval_crop_size="${CROP_SIZE}" \
-  --checkpoint_dir="${TRAIN_LOGDIR}" \
-  --eval_logdir="${EVAL_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --dataset="${PASCAL_FOLDER}" \
-  --max_number_of_evaluations=1 \
-
-## Export the trained checkpoint.
-CKPT_PATH="${TRAIN_LOGDIR}/model.ckpt-${NUM_ITERATIONS}"
-EXPORT_PATH="${EXPORT_DIR}/frozen_inference_graph.pb"
-
-python "${WORK_DIR}"/export_model.py \
-  --logtostderr \
-  --checkpoint_path="${CKPT_PATH}" \
-  --export_path="${EXPORT_PATH}" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --num_classes=2 \
-  --crop_size="${CROP_SIZE}" \
-  --crop_size="${CROP_SIZE}" \
-  --inference_scales=1.0
-
-########################################################
-########################################################
-
-# Set up the working directories.
-EXP_FOLDER="exp/coronal${DATE}"
-TRAIN_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/train"
-EVAL_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/eval"
-VIS_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/vis"
-EXPORT_DIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/export"
-mkdir -p "${TRAIN_LOGDIR}"
-mkdir -p "${EVAL_LOGDIR}"
-mkdir -p "${VIS_LOGDIR}"
-mkdir -p "${EXPORT_DIR}"
+    # Set up the working directories.
+    EXP_FOLDER="exp/saggital${DATE}"
+    TRAIN_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/train"
+    EVAL_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/eval"
+    VIS_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/vis"
+    EXPORT_DIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/export"
+    mkdir -p "${TRAIN_LOGDIR}"
+    mkdir -p "${EVAL_LOGDIR}"
+    mkdir -p "${VIS_LOGDIR}"
+    mkdir -p "${EXPORT_DIR}"
 
 
-PASCAL_DATASET="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/tfrecord_cor"
+    PASCAL_DATASET="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/tfrecord_sag"
 
-# Train 10 iterations.
-python "${WORK_DIR}"/train.py \
-  --logtostderr \
-  --train_split="train_cor" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --train_crop_size="${CROP_SIZE}" \
-  --train_crop_size="${CROP_SIZE}" \
-  --train_batch_size=4 \
-  --training_number_of_steps="${NUM_ITERATIONS}" \
-  --fine_tune_batch_norm=False \
-  --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
-  --train_logdir="${TRAIN_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --dataset="${PASCAL_FOLDER}"
+    # Train 10 iterations.
+    python "${WORK_DIR}"/train.py \
+      --logtostderr \
+      --train_split="train_sag" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --train_crop_size="${CROP_SIZE}" \
+      --train_crop_size="${CROP_SIZE}" \
+      --train_batch_size=4 \
+      --training_number_of_steps="${NUM_ITERATIONS}" \
+      --fine_tune_batch_norm=False \
+      --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
+      --train_logdir="${TRAIN_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --dataset="${PASCAL_FOLDER}"
 
-# Visualize the results.
-python "${WORK_DIR}"/vis.py \
-  --logtostderr \
-  --vis_split="val_cor" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --vis_crop_size="${CROP_SIZE}" \
-  --vis_crop_size="${CROP_SIZE}" \
-  --checkpoint_dir="${TRAIN_LOGDIR}" \
-  --vis_logdir="${VIS_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --max_number_of_iterations=1 \
-  --dataset="${PASCAL_FOLDER}"
+    # Visualize the results.
+    python "${WORK_DIR}"/vis.py \
+      --logtostderr \
+      --vis_split="val_sag" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --vis_crop_size="${CROP_SIZE}" \
+      --vis_crop_size="${CROP_SIZE}" \
+      --checkpoint_dir="${TRAIN_LOGDIR}" \
+      --vis_logdir="${VIS_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --max_number_of_iterations=1 \
+      --dataset="${PASCAL_FOLDER}"
 
-python "${WORK_DIR}"/eval.py \
-  --logtostderr \
-  --eval_split="val_cor" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --eval_crop_size="${CROP_SIZE}" \
-  --eval_crop_size="${CROP_SIZE}" \
-  --checkpoint_dir="${TRAIN_LOGDIR}" \
-  --eval_logdir="${EVAL_LOGDIR}" \
-  --dataset_dir="${PASCAL_DATASET}" \
-  --dataset="${PASCAL_FOLDER}" \
-  --max_number_of_evaluations=1 \
+    python "${WORK_DIR}"/eval.py \
+      --logtostderr \
+      --eval_split="val_sag" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --eval_crop_size="${CROP_SIZE}" \
+      --eval_crop_size="${CROP_SIZE}" \
+      --checkpoint_dir="${TRAIN_LOGDIR}" \
+      --eval_logdir="${EVAL_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --dataset="${PASCAL_FOLDER}" \
+      --max_number_of_evaluations=1 \
 
-## Export the trained checkpoint.
-CKPT_PATH="${TRAIN_LOGDIR}/model.ckpt-${NUM_ITERATIONS}"
-EXPORT_PATH="${EXPORT_DIR}/frozen_inference_graph.pb"
+    ## Export the trained checkpoint.
+    CKPT_PATH="${TRAIN_LOGDIR}/model.ckpt-${NUM_ITERATIONS}"
+    EXPORT_PATH="${EXPORT_DIR}/frozen_inference_graph.pb"
 
-python "${WORK_DIR}"/export_model.py \
-  --logtostderr \
-  --checkpoint_path="${CKPT_PATH}" \
-  --export_path="${EXPORT_PATH}" \
-  --model_variant="xception_65" \
-  --atrous_rates=6 \
-  --atrous_rates=12 \
-  --atrous_rates=18 \
-  --output_stride=16 \
-  --decoder_output_stride=4 \
-  --num_classes=2 \
-  --crop_size="${CROP_SIZE}" \
-  --crop_size="${CROP_SIZE}" \
-  --inference_scales=1.0
+    python "${WORK_DIR}"/export_model.py \
+      --logtostderr \
+      --checkpoint_path="${CKPT_PATH}" \
+      --export_path="${EXPORT_PATH}" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --num_classes=2 \
+      --crop_size="${CROP_SIZE}" \
+      --crop_size="${CROP_SIZE}" \
+      --inference_scales=1.0
+
+    ########################################################
+    ########################################################
+
+    # Set up the working directories.
+    EXP_FOLDER="exp/coronal${DATE}"
+    TRAIN_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/train"
+    EVAL_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/eval"
+    VIS_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/vis"
+    EXPORT_DIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/export"
+    mkdir -p "${TRAIN_LOGDIR}"
+    mkdir -p "${EVAL_LOGDIR}"
+    mkdir -p "${VIS_LOGDIR}"
+    mkdir -p "${EXPORT_DIR}"
+
+
+    PASCAL_DATASET="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/tfrecord_cor"
+
+    # Train 10 iterations.
+    python "${WORK_DIR}"/train.py \
+      --logtostderr \
+      --train_split="train_cor" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --train_crop_size="${CROP_SIZE}" \
+      --train_crop_size="${CROP_SIZE}" \
+      --train_batch_size=4 \
+      --training_number_of_steps="${NUM_ITERATIONS}" \
+      --fine_tune_batch_norm=False \
+      --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
+      --train_logdir="${TRAIN_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --dataset="${PASCAL_FOLDER}"
+
+    # Visualize the results.
+    python "${WORK_DIR}"/vis.py \
+      --logtostderr \
+      --vis_split="val_cor" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --vis_crop_size="${CROP_SIZE}" \
+      --vis_crop_size="${CROP_SIZE}" \
+      --checkpoint_dir="${TRAIN_LOGDIR}" \
+      --vis_logdir="${VIS_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --max_number_of_iterations=1 \
+      --dataset="${PASCAL_FOLDER}"
+
+    python "${WORK_DIR}"/eval.py \
+      --logtostderr \
+      --eval_split="val_cor" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --eval_crop_size="${CROP_SIZE}" \
+      --eval_crop_size="${CROP_SIZE}" \
+      --checkpoint_dir="${TRAIN_LOGDIR}" \
+      --eval_logdir="${EVAL_LOGDIR}" \
+      --dataset_dir="${PASCAL_DATASET}" \
+      --dataset="${PASCAL_FOLDER}" \
+      --max_number_of_evaluations=1 \
+
+    ## Export the trained checkpoint.
+    CKPT_PATH="${TRAIN_LOGDIR}/model.ckpt-${NUM_ITERATIONS}"
+    EXPORT_PATH="${EXPORT_DIR}/frozen_inference_graph.pb"
+
+    python "${WORK_DIR}"/export_model.py \
+      --logtostderr \
+      --checkpoint_path="${CKPT_PATH}" \
+      --export_path="${EXPORT_PATH}" \
+      --model_variant="xception_65" \
+      --atrous_rates=6 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
+      --decoder_output_stride=4 \
+      --num_classes=2 \
+      --crop_size="${CROP_SIZE}" \
+      --crop_size="${CROP_SIZE}" \
+      --inference_scales=1.0
+
+    NUM_ITERATIONS=$((NUM_ITERATIONS + 1000))
+done

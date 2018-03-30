@@ -160,7 +160,6 @@ def _process_batch(sess, original_images, semantic_predictions, image_names,
     original_image = np.squeeze(original_images[i])
     semantic_prediction = np.squeeze(semantic_predictions[i])
     crop_semantic_prediction = semantic_prediction[:image_height, :image_width]
-
     # Save image.
     save_annotation.save_annotation(
         original_image, save_dir, _IMAGE_FORMAT % (image_id_offset + i),
