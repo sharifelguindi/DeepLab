@@ -48,7 +48,7 @@ cd "${WORK_DIR}/${DATASET_DIR}"
 cd "${CURRENT_DIR}"
 
 # Train 2000 iterations.
-NUM_ITERATIONS=13005
+NUM_ITERATIONS=15000
 DATE="032818"
 CROP_SIZE=384
 # Set up the working directories.

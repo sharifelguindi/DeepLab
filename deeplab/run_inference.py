@@ -16,28 +16,28 @@ FLAGS = flags.FLAGS
 
 # Default Inputs
 flags.DEFINE_boolean('cerr', False,
-                     'Set to true to collect data based on .mat CERR files.')
+                     'Set to true to create/append .mat CERR file instead .')
 
 flags.DEFINE_string('graph_name', 'frozen_inference_graph',
-                    'absolute path to where raw data is collected from.')
+                    'inference graph name, standard is set by default')
 
-flags.DEFINE_string('data_dir', 'datasets/test/p19/',
-                    'absolute path to where raw data is collected from.')
+flags.DEFINE_string('data_dir', 'G:\\Projects\\DeepLab\\deeplab\\datasets\\test\\p21',
+                    'absolute path patient DICOM data, including RS object to append')
 
-flags.DEFINE_string('save_dir', 'datasets/test/p19/',
-                    'absolute path to where processed data is saved.')
+flags.DEFINE_string('save_dir', 'G:\\Projects\\DeepLab\\deeplab\\datasets\\test\\p21',
+                    'absolute path to save RS object, typically same folder')
 
-flags.DEFINE_string('model_dir', os.path.join('datasets','rectum','exp'),
-                    'absolute path to where processed data is saved.')
+flags.DEFINE_string('model_dir', os.path.join('datasets','bladder','exp'),
+                    'path to saved model directory (axial, coronal, saggital)')
 
-flags.DEFINE_string('model_val', '032818',
-                    'absolute path to where processed data is saved.')
+flags.DEFINE_string('model_val', '',
+                    'Identifier for models, typically date of training run (ex. 032818)')
 
-flags.DEFINE_string('structure', 'rectum',
-                    'string name of structure to export')
+flags.DEFINE_string('structure', 'bladder',
+                    'string name of structure folder')
 
-flags.DEFINE_string('structure_match', 'Rectum_O',
-                    'string name of structure to export')
+flags.DEFINE_string('structure_match', 'Bladder_O',
+                    'string name of structure to create')
 
 def find(pattern, path):
     result = []
@@ -99,6 +99,7 @@ class DeepLabModel(object):
 
 
 def create_rtstruct(RS_Files, im_mask_ax, im_mask_sag, im_mask_cor):
+
     ss = dicom.read_file(RS_Files[0])
     contour_name = FLAGS.structure
     data_path = FLAGS.data_dir
@@ -112,21 +113,23 @@ def create_rtstruct(RS_Files, im_mask_ax, im_mask_sag, im_mask_cor):
     ss.StructureSetLabel = 'DeepLabV3'
     ss.InstanceCreationDate = datetime.datetime.now().strftime("%Y%m%d")
     ss.InstanceCreationTime = datetime.datetime.now().strftime("%H%M%S.%f")
-    c_num = len(ss.ROIContourSequence)
+    ROINumList = []
+    for s in ss.ROIContourSequence:
+        ROINumList.append(s.ReferencedROINumber)
 
     ## Add StructureSetROISequence
     ss_new = Dataset()
-    ss_new.ROINumber = c_num + 1
-    ss_new.ReferencedFrameOfReferenceUID = ss.StructureSetROISequence[c_num - 1].ReferencedFrameOfReferenceUID
-    ss_new.ROIName = FLAGS.structure_match + '_DeepLabV3'
+    ss_new.ROINumber = np.int(max(ROINumList)) + 1
+    ss_new.ReferencedFrameOfReferenceUID = ss.StructureSetROISequence[len(ROINumList) - 1].ReferencedFrameOfReferenceUID
+    ss_new.ROIName = FLAGS.structure_match + '_DLV3'
     ss_new.ROIDescription = ''
     ss_new.ROIGenerationAlgorithm = 'MANUAL'
     ss.StructureSetROISequence.append(ss_new)
 
     ## Add RTROIObservationsSequence
     ss_new = Dataset()
-    ss_new.ObservationNumber = c_num + 1
-    ss_new.ReferencedROINumber = c_num + 1
+    ss_new.ObservationNumber = np.int(max(ROINumList)) + 1
+    ss_new.ReferencedROINumber = np.int(max(ROINumList)) + 1
     ss_new.ROIObservationDescription = 'Type:Soft, Range:*/*, Fill:0, Opacity:0.0, Thickness:1, LineThickness:2'
     ss_new.RTROIInterpretedType = ''
     ss_new.ROIInterpreter = ''
@@ -134,7 +137,7 @@ def create_rtstruct(RS_Files, im_mask_ax, im_mask_sag, im_mask_cor):
 
     ## Add ROIContourSequence
     ss_new = Dataset()
-    ss_new.ReferencedROINumber = c_num + 1
+    ss_new.ReferencedROINumber = np.int(max(ROINumList)) + 1
     ss_new.ROIDisplayColor = ['255', '0', '0']
     ss_new.ContourSequence = Sequence()
 
@@ -295,7 +298,7 @@ def main(unused_argv):
                 image = Image.open('hold.png')
                 r_im, seg = model.run(image)
                 im_mask_ax[:, :, i] = seg
-            # np.save(os.path.join(data_path, plane + '_' + contour_name + '.npy'), im_mask_ax)
+            np.save(os.path.join(data_path, plane + '_' + contour_name + '.npy'), im_mask_ax)
 
 
         elif plane == 'coronal':
@@ -314,7 +317,7 @@ def main(unused_argv):
                 image = Image.open('hold.png')
                 r_im, seg = model.run(image)
                 im_mask_cor[i,:,:] = seg
-            # np.save(os.path.join(data_path, plane + '_' + contour_name + '.npy'), im_mask_cor)
+            np.save(os.path.join(data_path, plane + '_' + contour_name + '.npy'), im_mask_cor)
 
         elif plane == 'saggital':
             print('Computing Saggital Model...')
@@ -332,7 +335,7 @@ def main(unused_argv):
                 image = Image.open('hold.png')
                 r_im, seg = model.run(image)
                 im_mask_sag[:,i,:] = seg
-            # np.save(os.path.join(data_path, plane + '_' + contour_name + '.npy'), im_mask_sag)
+            np.save(os.path.join(data_path, plane + '_' + contour_name + '.npy'), im_mask_sag)
 
     print('Creating DICOM object')
     create_rtstruct(RS_Files, im_mask_ax, im_mask_sag, im_mask_cor)

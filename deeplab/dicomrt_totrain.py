@@ -2,7 +2,7 @@
 # ==============================================================================
 #
 # This script returns PNG image files and associated masks for 2D training of images
-# using FCN architecture
+# using FCN architectures in tensorflow.
 #
 # Usage:
 #
@@ -31,22 +31,22 @@ FLAGS = flags.FLAGS
 
 # Default Inputs
 
-flags.DEFINE_boolean('cerr', False,
+flags.DEFINE_boolean('cerr', True,
                      'Set to true to collect data based on .mat CERR files.')
 
 flags.DEFINE_integer('num_shards', 2,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', '/media/sharif/Data/fcn/Data',
+flags.DEFINE_string('rawdata_dir', r'H:\Treatment Planning\Elguindi\Segmentation\CERR IO\mat files',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
                     'absolute path to where processed data is saved.')
 
-flags.DEFINE_string('structure', 'bladder_neck',
+flags.DEFINE_string('structure', 'parotids',
                     'string name of structure to export')
 
-flags.DEFINE_string('structure_match', 'Bladder_neck',
+flags.DEFINE_string('structure_match', 'Parotids',
                     'string name of structure to export')
 
 def getdataS(file):
@@ -97,6 +97,7 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
     if cerrIO:
         data_vol = np.rot90(data_vol, axes=(2, 0))
         data_seg = np.rot90(data_seg, axes=(2, 0))
+        data_seg[ data_seg > 1] = 1
 
     ## Verify size of scan data and mask data equivalent
     size = data_vol.shape
@@ -300,9 +301,12 @@ def main(unused_argv):
                 scan = getScanArray(file)
                 mask = getMaskArray(file)
                 sys.stdout.write('\r>> Exporting patient %d of %d' % (
-                    p_num, len(os.listdir(data_path))-1))
+                    p_num, len(os.listdir(data_path))))
                 data_export(scan, mask, FLAGS.save_dir, p_num, FLAGS.cerr, FLAGS.structure)
                 p_num = p_num + 1
+            print('\n')
+            print("Update segemntation_dataset.py with new class and values")
+            create_tfrecord(os.path.join(FLAGS.save_dir, FLAGS.structure))
         else:
             print("No CERR .mat files found")
             return
