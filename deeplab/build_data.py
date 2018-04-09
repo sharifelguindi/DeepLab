@@ -42,9 +42,9 @@ tf.app.flags.DEFINE_enum('label_format', 'png', ['png'],
 
 # A map from image format to expected data format.
 _IMAGE_FORMAT_MAP = {
-    'jpg': 'jpeg',
-    'jpeg': 'jpeg',
-    'png': 'png',
+    'jpg': b'jpeg',
+    'jpeg': b'jpeg',
+    'png': b'png',
 }
 
 
@@ -152,5 +152,5 @@ def image_seg_to_tfexample(image_data, filename, height, width, seg_data):
       'image/segmentation/class/encoded': (
           _bytes_list_feature(seg_data)),
       'image/segmentation/class/format': _bytes_list_feature(
-          FLAGS.label_format),
+          str.encode(FLAGS.label_format,'utf-8')),
   }))

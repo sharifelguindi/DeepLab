@@ -37,7 +37,7 @@ flags.DEFINE_boolean('cerr', True,
 flags.DEFINE_integer('num_shards', 2,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', '/media/sharif/Data/fcn/mat files',
+flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\CERR IO\\mat files',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
@@ -48,6 +48,18 @@ flags.DEFINE_string('structure', 'parotids',
 
 flags.DEFINE_string('structure_match', 'Parotids',
                     'string name of structure to export')
+
+def bbox2_3D(img):
+
+    r = np.any(img, axis=(1, 2))
+    c = np.any(img, axis=(0, 2))
+    z = np.any(img, axis=(0, 1))
+
+    rmin, rmax = np.where(r)[0][[0, -1]]
+    cmin, cmax = np.where(c)[0][[0, -1]]
+    zmin, zmax = np.where(z)[0][[0, -1]]
+
+    return rmin, rmax, cmin, cmax, zmin, zmax
 
 def getdataS(file):
     dataS = list(file['dataS'])
@@ -86,38 +98,48 @@ def getparamS(file):
 
 def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
 
+    max_padding = 256
     ## Create folders to store images/masks
     save_path = os.path.join(save_path, struct_name, 'processed')
     if not os.path.exists(os.path.join(save_path,'PNGImages')):
         os.makedirs(os.path.join(save_path,'PNGImages'))
     if not os.path.exists(os.path.join(save_path, 'SegmentationClass')):
         os.makedirs(os.path.join(save_path, 'SegmentationClass'))
+    if not os.path.exists(os.path.join(save_path, 'SegmentationClassVis')):
+        os.makedirs(os.path.join(save_path, 'SegmentationClassVis'))
 
     ## If CERR flag, rotate image 90 degrees (not needed but easy)
     if cerrIO:
         data_vol = np.rot90(data_vol, axes=(2, 0))
         data_seg = np.rot90(data_seg, axes=(2, 0))
+        ## For bilateral structure, convert to single class
         data_seg[ data_seg > 1] = 1
 
     ## Verify size of scan data and mask data equivalent
-    data_vol = data_vol[128:384,128:384,0:256]
-    data_seg = data_seg[128:384,128:384, 0:256]
-    size = data_vol.shape
-    size_msk = data_seg.shape
-    if size == size_msk:
+    if data_vol.shape == data_seg.shape:
+
+        rmin, rmax, cmin, cmax, zmin, zmax = bbox2_3D(data_seg)
+        data_vol = data_vol[rmin:rmax,cmin:cmax,zmin:zmax]
+        data_seg = data_seg[rmin:rmax,cmin:cmax,zmin:zmax]
+        size = data_seg.shape
+
         # Loop through axial slices, make 3-channel scan, single channel mask
         for i in range(0,size[2]):
             img = data_vol[:,:,i]
             contour = data_seg[:,:,i]
-            size_img = img.shape
+            img_ax = np.pad(img, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
+                                  (int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2)))), 'constant', constant_values=255)
+            contour_ax = np.pad(contour, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
+                                  (int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2)))), 'constant', constant_values=255)
+            size_img = img_ax.shape
             stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_img_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
 
-            stacked_img_1[:,:,0] = img
-            stacked_img_1[:,:,1] = img
-            stacked_img_1[:,:,2] = img
+            stacked_img_1[:,:,0] = img_ax
+            stacked_img_1[:,:,1] = img_ax
+            stacked_img_1[:,:,2] = img_ax
 
-            stacked_img_2[:,:] = contour
+            stacked_img_2[:,:] = contour_ax
             unique, counts = np.unique(stacked_img_2, return_counts=True)
             vals = dict(zip(unique, counts))
             if 1 in vals:
@@ -130,8 +152,10 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
         for i in range(0,size[1]):
             img_sag = data_vol[:,i,:]
             contour_sag = data_seg[:,i,:]
-            img_sag = np.pad(img_sag, ((0, 0), (0, size[1] - size[2])), 'constant', constant_values=255)
-            contour_sag = np.pad(contour_sag, ((0, 0), (0, size[1] - size[2])), 'constant', constant_values=255)
+            img_sag = np.pad(img_sag,((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
+                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
+            contour_sag = np.pad(contour_sag, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
+                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
             size_img = img_sag.shape
             stacked_sag_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_sag_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
@@ -153,8 +177,10 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
         for i in range(0,size[0]):
             img_cor = data_vol[i,:,:]
             contour_cor = data_seg[i,:,:]
-            img_cor = np.pad(img_cor, ((0, 0), (0, size[0] - size[2])), 'constant', constant_values=255)
-            contour_cor = np.pad(contour_cor, ((0, 0), (0, size[0] - size[2])), 'constant', constant_values=255)
+            img_cor = np.pad(img_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
+                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
+            contour_cor = np.pad(contour_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
+                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
             size_img = img_cor.shape
             stacked_cor_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_cor_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
@@ -273,19 +299,19 @@ def _convert_dataset(dataset_split, _NUM_SHARDS, structure_path, plane):
         # Read the image.
         image_filename = os.path.join(
             image_folder, filenames[i] + '.' + image_format)
-        image_data = tf.gfile.FastGFile(image_filename, 'r').read()
+        image_data = tf.gfile.FastGFile(image_filename, 'rb').read()
         height, width = image_reader.read_image_dims(image_data)
         # Read the semantic segmentation annotation.
         seg_filename = os.path.join(
             semantic_segmentation_folder,
             filenames[i] + '.' + label_format)
-        seg_data = tf.gfile.FastGFile(seg_filename, 'r').read()
+        seg_data = tf.gfile.FastGFile(seg_filename, 'rb').read()
         seg_height, seg_width = label_reader.read_image_dims(seg_data)
         if height != seg_height or width != seg_width:
           raise RuntimeError('Shape mismatched between image and label.')
         # Convert to tf example.
         example = build_data.image_seg_to_tfexample(
-            image_data, filenames[i], height, width, seg_data)
+            image_data, str.encode(filenames[i],'utf-8'), height, width, seg_data)
         tfrecord_writer.write(example.SerializeToString())
     sys.stdout.write('\n')
     sys.stdout.flush()
