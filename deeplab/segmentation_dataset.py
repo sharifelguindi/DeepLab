@@ -137,6 +137,19 @@ _URETHRA_SEG_INFORMATION = DatasetDescriptor(
     ignore_label=255,
 )
 
+_PAROTID_SEG_INFORMATION = DatasetDescriptor(
+    splits_to_sizes={
+        'train_ax': 1226,
+        'val_ax': 71,
+        'train_cor': 2393,
+        'val_cor': 132,
+        'train_sag': 3628,
+        'val_sag': 187,
+    },
+    num_classes=2,
+    ignore_label=255,
+)
+
 _DATASETS_INFORMATION = {
     'cityscapes': _CITYSCAPES_INFORMATION,
     'pascal_voc_seg': _PASCAL_VOC_SEG_INFORMATION,
@@ -144,6 +157,7 @@ _DATASETS_INFORMATION = {
     'rectum': _RECTUM_SEG_INFORMATION,
     'bladder_neck': _BLADNECK_SEG_INFORMATION,
     'urethra': _URETHRA_SEG_INFORMATION,
+    'parotids':_PAROTID_SEG_INFORMATION,
 }
 
 # Default file pattern of TFRecord of TensorFlow Example.

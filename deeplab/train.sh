@@ -48,14 +48,15 @@ cd "${WORK_DIR}/${DATASET_DIR}"
 cd "${CURRENT_DIR}"
 
 # Train 2000 iterations.
-NUM_ITERATIONS=15000
-DATE="032818"
-CROP_SIZE=384
+NUM_ITERATIONS=1000
+DATE=""
+CROP_SIZE=256
+TRAIN_SIZE=10
 # Set up the working directories.
 
-while [  $NUM_ITERATIONS -lt 15006 ]; do
+while [  $NUM_ITERATIONS -lt 15001 ]; do
 
-    PASCAL_FOLDER="bladder"
+    PASCAL_FOLDER="parotids"
     EXP_FOLDER="exp/axial${DATE}"
     TRAIN_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/train"
     EVAL_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/eval"
@@ -73,16 +74,15 @@ while [  $NUM_ITERATIONS -lt 15006 ]; do
       --logtostderr \
       --train_split="train_ax" \
       --model_variant="xception_65" \
+      --atrous_rates=3 \
       --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates=9 \
+      --output_stride=32 \
       --decoder_output_stride=4 \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \
-      --train_batch_size=4 \
+      --train_batch_size="${TRAIN_SIZE}" \
       --training_number_of_steps="${NUM_ITERATIONS}" \
-      --fine_tune_batch_norm=false \
       --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
       --train_logdir="${TRAIN_LOGDIR}" \
       --dataset_dir="${PASCAL_DATASET}" \
@@ -164,16 +164,16 @@ while [  $NUM_ITERATIONS -lt 15006 ]; do
       --logtostderr \
       --train_split="train_sag" \
       --model_variant="xception_65" \
+      --atrous_rates=3 \
       --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates=9 \
+      --output_stride=32 \
       --decoder_output_stride=4 \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \
-      --train_batch_size=4 \
+      --train_batch_size="${TRAIN_SIZE}" \
       --training_number_of_steps="${NUM_ITERATIONS}" \
-      --fine_tune_batch_norm=False \
+      --fine_tune_batch_norm=True \
       --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
       --train_logdir="${TRAIN_LOGDIR}" \
       --dataset_dir="${PASCAL_DATASET}" \
@@ -255,16 +255,16 @@ while [  $NUM_ITERATIONS -lt 15006 ]; do
       --logtostderr \
       --train_split="train_cor" \
       --model_variant="xception_65" \
+      --atrous_rates=3 \
       --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates=9 \
+      --output_stride=32 \
       --decoder_output_stride=4 \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \
-      --train_batch_size=4 \
+      --train_batch_size="${TRAIN_SIZE}"  \
       --training_number_of_steps="${NUM_ITERATIONS}" \
-      --fine_tune_batch_norm=False \
+      --fine_tune_batch_norm=True \
       --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
       --train_logdir="${TRAIN_LOGDIR}" \
       --dataset_dir="${PASCAL_DATASET}" \

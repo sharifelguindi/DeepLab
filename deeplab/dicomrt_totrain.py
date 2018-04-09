@@ -37,7 +37,7 @@ flags.DEFINE_boolean('cerr', True,
 flags.DEFINE_integer('num_shards', 2,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', r'H:\Treatment Planning\Elguindi\Segmentation\CERR IO\mat files',
+flags.DEFINE_string('rawdata_dir', '/media/sharif/Data/fcn/mat files',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
@@ -100,6 +100,8 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
         data_seg[ data_seg > 1] = 1
 
     ## Verify size of scan data and mask data equivalent
+    data_vol = data_vol[128:384,128:384,0:256]
+    data_seg = data_seg[128:384,128:384, 0:256]
     size = data_vol.shape
     size_msk = data_seg.shape
     if size == size_msk:
@@ -302,6 +304,7 @@ def main(unused_argv):
                 mask = getMaskArray(file)
                 sys.stdout.write('\r>> Exporting patient %d of %d' % (
                     p_num, len(os.listdir(data_path))))
+                sys.stdout.flush()
                 data_export(scan, mask, FLAGS.save_dir, p_num, FLAGS.cerr, FLAGS.structure)
                 p_num = p_num + 1
             print('\n')
