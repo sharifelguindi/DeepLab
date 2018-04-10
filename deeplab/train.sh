@@ -50,8 +50,8 @@ cd "${CURRENT_DIR}"
 # Train 2000 iterations.
 NUM_ITERATIONS=1000
 DATE=""
-CROP_SIZE=256
-TRAIN_SIZE=10
+CROP_SIZE=200
+TRAIN_SIZE=12
 # Set up the working directories.
 
 while [  $NUM_ITERATIONS -lt 15001 ]; do
@@ -74,10 +74,10 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --train_split="train_ax" \
       --model_variant="xception_65" \
-      --atrous_rates=3 \
       --atrous_rates=6 \
-      --atrous_rates=9 \
-      --output_stride=32 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
       --decoder_output_stride=4 \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \
@@ -164,10 +164,10 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --train_split="train_sag" \
       --model_variant="xception_65" \
-      --atrous_rates=3 \
       --atrous_rates=6 \
-      --atrous_rates=9 \
-      --output_stride=32 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
       --decoder_output_stride=4 \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \
@@ -255,10 +255,10 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --train_split="train_cor" \
       --model_variant="xception_65" \
-      --atrous_rates=3 \
       --atrous_rates=6 \
-      --atrous_rates=9 \
-      --output_stride=32 \
+      --atrous_rates=12 \
+      --atrous_rates=18 \
+      --output_stride=16 \
       --decoder_output_stride=4 \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \

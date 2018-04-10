@@ -139,12 +139,12 @@ _URETHRA_SEG_INFORMATION = DatasetDescriptor(
 
 _PAROTID_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 1226,
-        'val_ax': 71,
-        'train_cor': 2393,
-        'val_cor': 132,
-        'train_sag': 3628,
-        'val_sag': 187,
+        'train_ax': 1196,
+        'val_ax': 57,
+        'train_cor': 2413,
+        'val_cor': 104,
+        'train_sag': 3416,
+        'val_sag': 178,
     },
     num_classes=2,
     ignore_label=255,

@@ -37,7 +37,7 @@ flags.DEFINE_boolean('cerr', True,
 flags.DEFINE_integer('num_shards', 2,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\CERR IO\\mat files',
+flags.DEFINE_string('rawdata_dir', '/media/sharif/Data/fcn/mat files',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
@@ -59,7 +59,7 @@ def bbox2_3D(img):
     cmin, cmax = np.where(c)[0][[0, -1]]
     zmin, zmax = np.where(z)[0][[0, -1]]
 
-    return rmin, rmax, cmin, cmax, zmin, zmax
+    return rmin-10, rmax+10, cmin-10, cmax+10, zmin-10, zmax+10
 
 def getdataS(file):
     dataS = list(file['dataS'])
@@ -98,7 +98,7 @@ def getparamS(file):
 
 def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
 
-    max_padding = 256
+    max_padding = 200
     ## Create folders to store images/masks
     save_path = os.path.join(save_path, struct_name, 'processed')
     if not os.path.exists(os.path.join(save_path,'PNGImages')):
@@ -323,8 +323,10 @@ def main(unused_argv):
         sys.stdout.write('Searching for .mat CERR files')
         p_num = 1
         matFiles = find('*.mat',data_path)
+        matFiles.sort()
         if len(os.listdir(data_path)) > 0:
             for filename in matFiles:
+                print(filename)
                 file = h5py.File(filename, 'r')
                 scan = getScanArray(file)
                 mask = getMaskArray(file)
