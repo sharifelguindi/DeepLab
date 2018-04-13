@@ -21,22 +21,25 @@ flags.DEFINE_boolean('cerr', False,
 flags.DEFINE_string('graph_name', 'frozen_inference_graph',
                     'inference graph name, standard is set by default')
 
-flags.DEFINE_string('data_dir', 'G:\\Projects\\DeepLab\\deeplab\\datasets\\test\\p21',
+flags.DEFINE_string('data_dir', 'G:\\Projects\\DeepLab\\deeplab\\datasets\\test\\test',
                     'absolute path patient DICOM data, including RS object to append')
 
-flags.DEFINE_string('save_dir', 'G:\\Projects\\DeepLab\\deeplab\\datasets\\test\\p21',
+flags.DEFINE_string('save_dir', 'G:\\Projects\\DeepLab\\deeplab\\datasets\\test\\test',
                     'absolute path to save RS object, typically same folder')
 
-flags.DEFINE_string('model_dir', os.path.join('datasets','bladder','exp'),
+flags.DEFINE_string('model_dir', os.path.join('datasets','parotids','exp'),
                     'path to saved model directory (axial, coronal, saggital)')
 
 flags.DEFINE_string('model_val', '',
                     'Identifier for models, typically date of training run (ex. 032818)')
 
-flags.DEFINE_string('structure', 'bladder',
+flags.DEFINE_integer('inference_size', 512,
+                    'Size of image used in training')
+
+flags.DEFINE_string('structure', 'parotids',
                     'string name of structure folder')
 
-flags.DEFINE_string('structure_match', 'Bladder_O',
+flags.DEFINE_string('structure_match', 'Parotid_L',
                     'string name of structure to create')
 
 def find(pattern, path):
@@ -58,7 +61,7 @@ class DeepLabModel(object):
 
     INPUT_TENSOR_NAME = 'ImageTensor:0'
     OUTPUT_TENSOR_NAME = 'SemanticPredictions:0'
-    INPUT_SIZE = 384
+    INPUT_SIZE = 512
 
     def __init__(self, tarball_path):
         """Creates and loads pretrained deeplab model."""
@@ -98,7 +101,8 @@ class DeepLabModel(object):
         return resized_image, seg_map
 
 
-def create_rtstruct(RS_Files, im_mask_ax, im_mask_sag, im_mask_cor):
+def create_rtstruct(RS_Files, im_mask_ax):
+                    # , im_mask_sag, im_mask_cor):
 
     ss = dicom.read_file(RS_Files[0])
     contour_name = FLAGS.structure
@@ -180,7 +184,7 @@ def create_rtstruct(RS_Files, im_mask_ax, im_mask_sag, im_mask_cor):
                 z_prime = float(img.ImagePositionPatient[2])
                 zsp = float(img.SliceThickness)
                 z = int((z_prime - z0) / zsp)
-                if np.max(im_mask_ax[:, :, z]) > 0 and np.max(im_mask_sag[:, :, z] > 0):
+                if np.max(im_mask_ax[:, :, z]) > 0:   #and np.max(im_mask_sag[:, :, z] > 0):
                     r = im_mask_ax[:, :, z]
                     contours = measure.find_contours(r, 0.5)
                     for n, contour in enumerate(contours):
@@ -280,6 +284,7 @@ def main(unused_argv):
     planeList = ['axial', 'coronal', 'saggital']
     size = im_data.shape
     model_val = FLAGS.model_val
+    image_size = FLAGS.inference_size
     ## Loop through each plane and load subsequence model
     for plane in planeList:
         model_path = os.path.join(FLAGS.model_dir, plane + model_val, 'export', 'frozen_inference_graph.pb')
@@ -290,16 +295,15 @@ def main(unused_argv):
             for i in range(0,size[2]):
                 img = im_data[:,:,i]
                 size_img = img.shape
-                stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
+                stacked_img_1 = np.zeros((image_size, image_size, 3), dtype=np.int16)
                 stacked_img_1[:,:,0] = img
                 stacked_img_1[:,:,1] = img
                 stacked_img_1[:,:,2] = img
                 imsave('hold.png', stacked_img_1)
                 image = Image.open('hold.png')
                 r_im, seg = model.run(image)
-                im_mask_ax[:, :, i] = seg
+                im_mask_ax[:,:, i] = seg
             np.save(os.path.join(data_path, plane + '_' + contour_name + '.npy'), im_mask_ax)
-
 
         elif plane == 'coronal':
             print('Computing Coronal Model...')

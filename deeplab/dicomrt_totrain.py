@@ -31,23 +31,23 @@ FLAGS = flags.FLAGS
 
 # Default Inputs
 
-flags.DEFINE_boolean('cerr', True,
+flags.DEFINE_boolean('cerr', False,
                      'Set to true to collect data based on .mat CERR files.')
 
 flags.DEFINE_integer('num_shards', 2,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', '/media/sharif/Data/fcn/mat files',
+flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\MRCAT_DATA',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
                     'absolute path to where processed data is saved.')
 
-flags.DEFINE_string('structure', 'parotids',
+flags.DEFINE_string('structure', 'bladder',
                     'string name of structure to export')
 
-flags.DEFINE_string('structure_match', 'Parotids',
-                    'string name of structure to export')
+flags.DEFINE_string('structure_match', 'Bladder_O',
+                    'string name for structure match')
 
 def bbox2_3D(img):
 
@@ -95,10 +95,9 @@ def getparamS(file):
     return paramList
 
 ## This function converts a 3D numpy array image and mask set into .png files for machine learning 2D input
-
 def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
 
-    max_padding = 200
+    max_padding = 384
     ## Create folders to store images/masks
     save_path = os.path.join(save_path, struct_name, 'processed')
     if not os.path.exists(os.path.join(save_path,'PNGImages')):
@@ -118,9 +117,10 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
     ## Verify size of scan data and mask data equivalent
     if data_vol.shape == data_seg.shape:
 
-        rmin, rmax, cmin, cmax, zmin, zmax = bbox2_3D(data_seg)
-        data_vol = data_vol[rmin:rmax,cmin:cmax,zmin:zmax]
-        data_seg = data_seg[rmin:rmax,cmin:cmax,zmin:zmax]
+        print(p_num)
+        # rmin, rmax, cmin, cmax, zmin, zmax = bbox2_3D(data_seg)
+        # data_vol = data_vol[rmin:rmax,cmin:cmax,zmin:zmax]
+        # data_seg = data_seg[rmin:rmax,cmin:cmax,zmin:zmax]
         size = data_seg.shape
 
         # Loop through axial slices, make 3-channel scan, single channel mask
@@ -326,7 +326,6 @@ def main(unused_argv):
         matFiles.sort()
         if len(os.listdir(data_path)) > 0:
             for filename in matFiles:
-                print(filename)
                 file = h5py.File(filename, 'r')
                 scan = getScanArray(file)
                 mask = getMaskArray(file)
@@ -349,7 +348,7 @@ def main(unused_argv):
 
         ## Start loop through each file (p_num = patient number)
         if RS_Files:
-            for p_num in range(0, len(RS_Files)):
+            for p_num in range(21, len(RS_Files)):
 
                 ## Read RS file into dicom class, ss
                 ss = dicom.read_file(RS_Files[p_num])
