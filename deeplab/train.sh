@@ -1,27 +1,4 @@
 #!/bin/bash
-# Copyright 2018 The TensorFlow Authors All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-#
-# This script is used to run local test on PASCAL VOC 2012. Users could also
-# modify from this script for their use case.
-#
-# Usage:
-#   # From the tensorflow/models/research/deeplab directory.
-#   sh ./local_test.sh
-#
-#
 
 # Exit immediately if a command exits with a non-zero status.
 set -e
@@ -31,32 +8,35 @@ cd ..
 
 # Update PYTHONPATH.
 export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/elguinds/cuda/lib64
 
 # Set up the working environment.
 CURRENT_DIR=$(pwd)
 WORK_DIR="${CURRENT_DIR}/deeplab"
 
-# Run model_test first to make sure the PYTHONPATH is correctly set.
-#python "${WORK_DIR}"/model_test.py -v
-
 # Go to datasets folder and download PASCAL VOC 2012 segmentation dataset.
 DATASET_DIR="datasets"
 cd "${WORK_DIR}/${DATASET_DIR}"
-#bash ./download_and_convert_voc2012.sh
 
 # Go back to original directory.
 cd "${CURRENT_DIR}"
 
-# Train 2000 iterations.
-NUM_ITERATIONS=1000
+# Training iterations.
+NUM_ITERATIONS=10000
 DATE=""
-CROP_SIZE=200
-TRAIN_SIZE=12
+CROP_SIZE=256
+TRAIN_SIZE=16
+ATROUS_1=6
+ATROUS_2=12
+ATROUS_3=18
+OUT_STRIDE=16
+BATCH_NORM="True"
+
 # Set up the working directories.
 
-while [  $NUM_ITERATIONS -lt 15001 ]; do
+while [  $NUM_ITERATIONS -lt 20001 ]; do
 
-    PASCAL_FOLDER="parotids"
+    PASCAL_FOLDER="bladder"
     EXP_FOLDER="exp/axial${DATE}"
     TRAIN_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/train"
     EVAL_LOGDIR="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/${EXP_FOLDER}/eval"
@@ -74,11 +54,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --train_split="train_ax" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \
       --train_batch_size="${TRAIN_SIZE}" \
@@ -93,11 +74,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --vis_split="val_ax" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --vis_crop_size="${CROP_SIZE}" \
       --vis_crop_size="${CROP_SIZE}" \
       --checkpoint_dir="${TRAIN_LOGDIR}" \
@@ -110,11 +92,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --eval_split="val_ax" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --eval_crop_size="${CROP_SIZE}" \
       --eval_crop_size="${CROP_SIZE}" \
       --checkpoint_dir="${TRAIN_LOGDIR}" \
@@ -132,11 +115,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --checkpoint_path="${CKPT_PATH}" \
       --export_path="${EXPORT_PATH}" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --num_classes=2 \
       --crop_size="${CROP_SIZE}" \
       --crop_size="${CROP_SIZE}" \
@@ -164,16 +148,16 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --train_split="train_sag" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \
       --train_batch_size="${TRAIN_SIZE}" \
       --training_number_of_steps="${NUM_ITERATIONS}" \
-      --fine_tune_batch_norm=True \
       --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
       --train_logdir="${TRAIN_LOGDIR}" \
       --dataset_dir="${PASCAL_DATASET}" \
@@ -184,11 +168,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --vis_split="val_sag" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --vis_crop_size="${CROP_SIZE}" \
       --vis_crop_size="${CROP_SIZE}" \
       --checkpoint_dir="${TRAIN_LOGDIR}" \
@@ -201,11 +186,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --eval_split="val_sag" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --eval_crop_size="${CROP_SIZE}" \
       --eval_crop_size="${CROP_SIZE}" \
       --checkpoint_dir="${TRAIN_LOGDIR}" \
@@ -223,11 +209,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --checkpoint_path="${CKPT_PATH}" \
       --export_path="${EXPORT_PATH}" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --num_classes=2 \
       --crop_size="${CROP_SIZE}" \
       --crop_size="${CROP_SIZE}" \
@@ -255,16 +242,16 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --train_split="train_cor" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --train_crop_size="${CROP_SIZE}" \
       --train_crop_size="${CROP_SIZE}" \
       --train_batch_size="${TRAIN_SIZE}"  \
       --training_number_of_steps="${NUM_ITERATIONS}" \
-      --fine_tune_batch_norm=True \
       --tf_initial_checkpoint="${WORK_DIR}/${DATASET_DIR}/start_weights/model.ckpt" \
       --train_logdir="${TRAIN_LOGDIR}" \
       --dataset_dir="${PASCAL_DATASET}" \
@@ -275,11 +262,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --vis_split="val_cor" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --vis_crop_size="${CROP_SIZE}" \
       --vis_crop_size="${CROP_SIZE}" \
       --checkpoint_dir="${TRAIN_LOGDIR}" \
@@ -292,11 +280,12 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --logtostderr \
       --eval_split="val_cor" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --eval_crop_size="${CROP_SIZE}" \
       --eval_crop_size="${CROP_SIZE}" \
       --checkpoint_dir="${TRAIN_LOGDIR}" \
@@ -314,15 +303,17 @@ while [  $NUM_ITERATIONS -lt 15001 ]; do
       --checkpoint_path="${CKPT_PATH}" \
       --export_path="${EXPORT_PATH}" \
       --model_variant="xception_65" \
-      --atrous_rates=6 \
-      --atrous_rates=12 \
-      --atrous_rates=18 \
-      --output_stride=16 \
+      --atrous_rates="${ATROUS_1}" \
+      --atrous_rates="${ATROUS_2}" \
+      --atrous_rates="${ATROUS_3}" \
+      --output_stride="${OUT_STRIDE}" \
       --decoder_output_stride=4 \
+      --fine_tune_batch_norm="${BATCH_NORM}" \
       --num_classes=2 \
       --crop_size="${CROP_SIZE}" \
       --crop_size="${CROP_SIZE}" \
       --inference_scales=1.0
 
-    NUM_ITERATIONS=$((NUM_ITERATIONS + 1000))
+    NUM_ITERATIONS=$((NUM_ITERATIONS + 10000))
+
 done

@@ -43,13 +43,13 @@ flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentati
 flags.DEFINE_string('save_dir', 'datasets',
                     'absolute path to where processed data is saved.')
 
-flags.DEFINE_string('structure', 'bladder',
+flags.DEFINE_string('structure', 'bladder_sm',
                     'string name of structure to export')
 
 flags.DEFINE_string('structure_match', 'Bladder_O',
                     'string name for structure match')
 
-def bbox2_3D(img):
+def bbox2_3D(img, pad):
 
     r = np.any(img, axis=(1, 2))
     c = np.any(img, axis=(0, 2))
@@ -59,7 +59,7 @@ def bbox2_3D(img):
     cmin, cmax = np.where(c)[0][[0, -1]]
     zmin, zmax = np.where(z)[0][[0, -1]]
 
-    return rmin-10, rmax+10, cmin-10, cmax+10, zmin-10, zmax+10
+    return rmin - pad, rmax + pad, cmin - pad, cmax + pad, zmin - pad, zmax + pad
 
 def getdataS(file):
     dataS = list(file['dataS'])
@@ -97,7 +97,7 @@ def getparamS(file):
 ## This function converts a 3D numpy array image and mask set into .png files for machine learning 2D input
 def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
 
-    max_padding = 384
+    max_padding = 256
     ## Create folders to store images/masks
     save_path = os.path.join(save_path, struct_name, 'processed')
     if not os.path.exists(os.path.join(save_path,'PNGImages')):
@@ -117,10 +117,9 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
     ## Verify size of scan data and mask data equivalent
     if data_vol.shape == data_seg.shape:
 
-        print(p_num)
-        # rmin, rmax, cmin, cmax, zmin, zmax = bbox2_3D(data_seg)
-        # data_vol = data_vol[rmin:rmax,cmin:cmax,zmin:zmax]
-        # data_seg = data_seg[rmin:rmax,cmin:cmax,zmin:zmax]
+        rmin, rmax, cmin, cmax, zmin, zmax = bbox2_3D(data_seg, 10)
+        data_vol = data_vol[rmin:rmax,cmin:cmax,zmin:zmax]
+        data_seg = data_seg[rmin:rmax,cmin:cmax,zmin:zmax]
         size = data_seg.shape
 
         # Loop through axial slices, make 3-channel scan, single channel mask
@@ -128,7 +127,7 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             img = data_vol[:,:,i]
             contour = data_seg[:,:,i]
             img_ax = np.pad(img, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
-                                  (int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2)))), 'constant', constant_values=255)
+                                  (int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2)))), 'constant', constant_values=0)
             contour_ax = np.pad(contour, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
                                   (int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2)))), 'constant', constant_values=255)
             size_img = img_ax.shape
@@ -153,7 +152,7 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             img_sag = data_vol[:,i,:]
             contour_sag = data_seg[:,i,:]
             img_sag = np.pad(img_sag,((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
-                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
+                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=0)
             contour_sag = np.pad(contour_sag, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
                                   (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
             size_img = img_sag.shape
@@ -178,7 +177,7 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             img_cor = data_vol[i,:,:]
             contour_cor = data_seg[i,:,:]
             img_cor = np.pad(img_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
-                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
+                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=0)
             contour_cor = np.pad(contour_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
                                   (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
             size_img = img_cor.shape
@@ -348,7 +347,7 @@ def main(unused_argv):
 
         ## Start loop through each file (p_num = patient number)
         if RS_Files:
-            for p_num in range(21, len(RS_Files)):
+            for p_num in range(0, len(RS_Files)):
 
                 ## Read RS file into dicom class, ss
                 ss = dicom.read_file(RS_Files[p_num])
@@ -359,7 +358,7 @@ def main(unused_argv):
                 for item in ss.StructureSetROISequence[:]:
 
                     ## Check if structure is equal to specified structure name
-                    if item.ROIName == FLAGS.structure_match:
+                    if FLAGS.structure_match in item.ROIName:
                          ## ss_maxslice: determines maximum number of image slices contour lives on
                         ss_maxslice = len(ss.ROIContours[k].Contours)
 
@@ -403,7 +402,8 @@ def main(unused_argv):
                                 for j in range(0, ss_maxslice):
 
                                     ## check CT file name against reference UID in contour object
-                                    if CT_files[slice].split(os.sep)[-1] == ss.ROIContours[k].Contours[j].ContourImageSequence[0].ReferencedSOPInstanceUID + '.dcm':
+                                    if CT_files[slice].split(os.sep)[-1] == ss.ROIContours[k].Contours[j].ContourImageSequence[0].ReferencedSOPInstanceUID + '.dcm' or \
+                                       CT_files[slice].split(os.sep)[-1] == 'MR.' + ss.ROIContours[k].Contours[j].ContourImageSequence[0].ReferencedSOPInstanceUID + '.dcm':
                                         ## Initialize point list and determin x,y,z pixel spacing, dicom positioning
                                         pointList = []
                                         x_y = np.array(img.ImagePositionPatient)

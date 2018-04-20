@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="625d90f8-d3f4-4938-9ed9-2c2f087125a8" name="lilac" url="http://lilac.mskcc.org">
+        <fileTransfer host="lilac.mskcc.org" port="22" rootFolder="/lila/home/elguinds" accessType="SFTP" authAgent="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
