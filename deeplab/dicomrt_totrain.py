@@ -24,30 +24,59 @@ import h5py
 import sys
 import glob
 import math
-import build_data
+# import build_data
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 # Default Inputs
+# 'H:\\Treatment Planning\\Elguindi\\Segmentation\\CERR IO\\\mat files',
+# 'H:\\Treatment Planning\\Elguindi\\Segmentation\\MRCAT_DATA'
 
-flags.DEFINE_boolean('cerr', False,
+flags.DEFINE_boolean('cerr', True,
                      'Set to true to collect data based on .mat CERR files.')
 
 flags.DEFINE_integer('num_shards', 2,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\MRCAT_DATA',
+flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\CERR IO\\\mat files',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
                     'absolute path to where processed data is saved.')
 
-flags.DEFINE_string('structure', 'bladder_sm',
+flags.DEFINE_string('structure', 'parotids',
                     'string name of structure to export')
 
-flags.DEFINE_string('structure_match', 'Bladder_O',
+flags.DEFINE_string('structure_match', 'parotids',
                     'string name for structure match')
+
+def bit_conversion(img, stacked_img_1, LUT, structure):
+
+    if structure == 'parotids':
+        LUT_1 = np.clip(LUT, 500, 1000)
+        LUT_2 = np.clip(LUT, 750, 1250)
+        LUT_3 = np.clip(LUT, 1000, 1500)
+        for i in range(0, len(LUT)):
+            LUT_1[i] = np.int((255 / 500) * LUT_1[i] - 255)
+            LUT_2[i] = np.int((255 / 500) * LUT_2[i] - 382)
+            LUT_3[i] = np.int((255 / 500) * LUT_3[i] - 510)
+
+    elif structure == 'bladder':
+        LUT_1 = np.clip(LUT, 300, 800)
+        LUT_2 = np.clip(LUT, 550, 1050)
+        LUT_3 = np.clip(LUT, 800, 1300)
+        for i in range(0, len(LUT)):
+            LUT_1[i] = np.int((255 / 500) * LUT_1[i] - 153)
+            LUT_2[i] = np.int((255 / 500) * LUT_2[i] - 280)
+            LUT_3[i] = np.int((255 / 500) * LUT_3[i] - 408)
+
+    img = img.astype(int)
+    stacked_img_1[:, :, 0] = LUT_1[img]
+    stacked_img_1[:, :, 1] = LUT_2[img]
+    stacked_img_1[:, :, 2] = LUT_3[img]
+
+    return stacked_img_1
 
 def bbox2_3D(img, pad):
 
@@ -134,9 +163,16 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_img_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
 
-            stacked_img_1[:,:,0] = img_ax
-            stacked_img_1[:,:,1] = img_ax
-            stacked_img_1[:,:,2] = img_ax
+            if FLAGS.structure == 'parotids':
+                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+                stacked_img_1 = bit_conversion(img_ax, stacked_img_1, LUT, FLAGS.structure)
+            elif FLAGS.structure == 'bladder':
+                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+                stacked_img_1 = bit_conversion(img_ax, stacked_img_1, LUT, FLAGS.structure)
+            else:
+                stacked_img_1[:,:,0] = img_ax
+                stacked_img_1[:,:,1] = img_ax
+                stacked_img_1[:,:,2] = img_ax
 
             stacked_img_2[:,:] = contour_ax
             unique, counts = np.unique(stacked_img_2, return_counts=True)
@@ -159,9 +195,16 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_sag_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_sag_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
 
-            stacked_sag_1[:,:,0] = img_sag
-            stacked_sag_1[:,:,1] = img_sag
-            stacked_sag_1[:,:,2] = img_sag
+            if FLAGS.structure == 'parotids':
+                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+                stacked_sag_1 = bit_conversion(img_sag, stacked_sag_1, LUT, FLAGS.structure)
+            elif FLAGS.structure == 'bladder':
+                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+                stacked_sag_1 = bit_conversion(img_sag, stacked_sag_1, LUT, FLAGS.structure)
+            else:
+                stacked_sag_1[:,:,0] = img_sag
+                stacked_sag_1[:,:,1] = img_sag
+                stacked_sag_1[:,:,2] = img_sag
 
             stacked_sag_2[:,:] = contour_sag
             unique, counts = np.unique(stacked_sag_2, return_counts=True)
@@ -184,9 +227,16 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_cor_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_cor_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
 
-            stacked_cor_1[:,:,0] = img_cor
-            stacked_cor_1[:,:,1] = img_cor
-            stacked_cor_1[:,:,2] = img_cor
+            if FLAGS.structure == 'parotids':
+                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+                stacked_cor_1 = bit_conversion(img_cor, stacked_cor_1, LUT, FLAGS.structure)
+            elif FLAGS.structure == 'bladder':
+                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+                stacked_cor_1 = bit_conversion(img_cor, stacked_cor_1, LUT, FLAGS.structure)
+            else:
+                stacked_cor_1[:,:,0] = img_cor
+                stacked_cor_1[:,:,1] = img_cor
+                stacked_cor_1[:,:,2] = img_cor
 
             stacked_cor_2[:,:] = contour_cor
             unique, counts = np.unique(stacked_cor_2, return_counts=True)
@@ -367,7 +417,10 @@ def main(unused_argv):
                         pattern = '*' + '.'.join(pattern.split('.')[:-2])
                         pattern = pattern[:-3] + '*'
                         CT_files = find(pattern, data_path)
-
+                        try:
+                             CT_files.remove(RS_Files[p_num])
+                        except:
+                             print('RS not found in CT list')
                         if CT_files:
 
                             ## Open first CT image, get size, total number of files and
