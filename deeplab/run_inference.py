@@ -25,7 +25,7 @@ flags.DEFINE_string('graph_name', 'frozen_inference_graph',
 flags.DEFINE_string('data_dir', 'datasets/HNVAL/p10',
                     'absolute path patient DICOM data, including RS object to append')
 
-flags.DEFINE_string('save_dir', 'datasets/HNVAL/p10',
+flags.DEFINE_string('save_dir', 'deeplab/datasets/HNVAL/p10',
                     'absolute path to save RS object, typically same folder')
 
 flags.DEFINE_string('model_dir', os.path.join('datasets','parotids','exp'),
@@ -52,18 +52,22 @@ def bit_conversion(img, stacked_img_1, LUT, structure):
         LUT_3 = np.clip(LUT, 1000, 1500)
 
         for i in range(0, len(LUT)):
-            LUT_1[i] = np.int((255 / 500) * LUT_1[i] - 255)
-            LUT_2[i] = np.int((255 / 500) * LUT_2[i] - 382)
-            LUT_3[i] = np.int((255 / 500) * LUT_3[i] - 510)
+            LUT_1[i] = np.int(((255. / 500.) * LUT_1[i]) - 255)
+            LUT_2[i] = np.int(((255. / 500.) * LUT_2[i]) - 382)
+            LUT_3[i] = np.int(((255. / 500.) * LUT_3[i]) - 510)
+
+        LUT_1 = LUT_1.astype(np.uint8)
+        LUT_2 = LUT_2.astype(np.uint8)
+        LUT_3 = LUT_3.astype(np.uint8)
 
     elif structure == 'bladder':
         LUT_1 = np.clip(LUT, 300, 800)
         LUT_2 = np.clip(LUT, 550, 1050)
         LUT_3 = np.clip(LUT, 800, 1300)
         for i in range(0, len(LUT)):
-            LUT_1[i] = np.int((255 / 500) * LUT_1[i] - 153)
-            LUT_2[i] = np.int((255 / 500) * LUT_2[i] - 280)
-            LUT_3[i] = np.int((255 / 500) * LUT_3[i] - 408)
+            LUT_1[i] = np.int((255. / 500) * LUT_1[i] - 153)
+            LUT_2[i] = np.int((255. / 500) * LUT_2[i] - 280)
+            LUT_3[i] = np.int((255. / 500) * LUT_3[i] - 408)
 
     img = img.astype(int)
     stacked_img_1[:, :, 0] = LUT_1[img]
@@ -378,9 +382,9 @@ def main(unused_argv):
                     for i in range(0,size[2]):
                         img_ax = im_data_resized[:,:,i]
                         size_img = img_ax.shape
-                        stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
+                        stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.uint8)
                         if FLAGS.structure == 'parotids':
-                            LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+                            LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1).astype(int)
                             stacked_img_1 = bit_conversion(img_ax, stacked_img_1, LUT, FLAGS.structure)
                         elif FLAGS.structure == 'bladder':
                             LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
