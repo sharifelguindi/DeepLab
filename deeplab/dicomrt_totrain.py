@@ -24,7 +24,7 @@ import h5py
 import sys
 import glob
 import math
-# import build_data
+import build_data
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -33,43 +33,73 @@ FLAGS = flags.FLAGS
 # 'H:\\Treatment Planning\\Elguindi\\Segmentation\\CERR IO\\\mat files',
 # 'H:\\Treatment Planning\\Elguindi\\Segmentation\\MRCAT_DATA'
 
-flags.DEFINE_boolean('cerr', True,
+flags.DEFINE_boolean('cerr', False,
                      'Set to true to collect data based on .mat CERR files.')
 
 flags.DEFINE_integer('num_shards', 2,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\CERR IO\\\mat files',
+flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\MRCAT_DATA',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
                     'absolute path to where processed data is saved.')
 
-flags.DEFINE_string('structure', 'parotids',
+flags.DEFINE_string('structure', 'rectum',
                     'string name of structure to export')
 
-flags.DEFINE_string('structure_match', 'parotids',
+flags.DEFINE_string('structure_match', 'Rectum_O',
                     'string name for structure match')
 
 def bit_conversion(img, stacked_img_1, LUT, structure):
 
     if structure == 'parotids':
-        LUT_1 = np.clip(LUT, 500, 1000)
-        LUT_2 = np.clip(LUT, 750, 1250)
-        LUT_3 = np.clip(LUT, 1000, 1500)
+        w1_low = 0
+        w1_high = 2000
+        w2_low = 850
+        w2_high = 1150
+        w3_low = 950
+        w3_high = 1250
+
+        LUT_1 = np.clip(LUT, w1_low, w1_high)
+        LUT_2 = np.clip(LUT,  w2_low, w2_high)
+        LUT_3 = np.clip(LUT,  w3_low, w3_high)
         for i in range(0, len(LUT)):
-            LUT_1[i] = np.int((255 / 500) * LUT_1[i] - 255)
-            LUT_2[i] = np.int((255 / 500) * LUT_2[i] - 382)
-            LUT_3[i] = np.int((255 / 500) * LUT_3[i] - 510)
+            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
+            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
+            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
 
     elif structure == 'bladder':
-        LUT_1 = np.clip(LUT, 300, 800)
-        LUT_2 = np.clip(LUT, 550, 1050)
-        LUT_3 = np.clip(LUT, 800, 1300)
+        w1_low = 0
+        w1_high = 1700
+        w2_low = 500
+        w2_high = 1200
+        w3_low = 1000
+        w3_high = 1700
+
+        LUT_1 = np.clip(LUT, w1_low, w1_high)
+        LUT_2 = np.clip(LUT,  w2_low, w2_high)
+        LUT_3 = np.clip(LUT,  w3_low, w3_high)
         for i in range(0, len(LUT)):
-            LUT_1[i] = np.int((255 / 500) * LUT_1[i] - 153)
-            LUT_2[i] = np.int((255 / 500) * LUT_2[i] - 280)
-            LUT_3[i] = np.int((255 / 500) * LUT_3[i] - 408)
+            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
+            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
+            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
+
+    elif structure == 'rectum':
+        w1_low = 0
+        w1_high = 1700
+        w2_low = 500
+        w2_high = 1200
+        w3_low = 1000
+        w3_high = 1700
+
+        LUT_1 = np.clip(LUT, w1_low, w1_high)
+        LUT_2 = np.clip(LUT,  w2_low, w2_high)
+        LUT_3 = np.clip(LUT,  w3_low, w3_high)
+        for i in range(0, len(LUT)):
+            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
+            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
+            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
 
     img = img.astype(int)
     stacked_img_1[:, :, 0] = LUT_1[img]
@@ -124,9 +154,10 @@ def getparamS(file):
     return paramList
 
 ## This function converts a 3D numpy array image and mask set into .png files for machine learning 2D input
-def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
+def data_export(data_vol_org, data_seg_org, save_path, p_num, cerrIO, struct_name):
 
     max_padding = 256
+
     ## Create folders to store images/masks
     save_path = os.path.join(save_path, struct_name, 'processed')
     if not os.path.exists(os.path.join(save_path,'PNGImages')):
@@ -138,19 +169,31 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
 
     ## If CERR flag, rotate image 90 degrees (not needed but easy)
     if cerrIO:
-        data_vol = np.rot90(data_vol, axes=(2, 0))
-        data_seg = np.rot90(data_seg, axes=(2, 0))
+        data_vol_org = np.rot90(data_vol_org, axes=(2, 0))
+        data_seg = np.rot90(data_seg_org, axes=(2, 0))
         ## For bilateral structure, convert to single class
         data_seg[ data_seg > 1] = 1
-
+    else:
+        data_seg = data_seg_org
     ## Verify size of scan data and mask data equivalent
-    if data_vol.shape == data_seg.shape:
+    if data_vol_org.shape == data_seg.shape:
+
+        data_vol = ((data_vol_org - np.min(data_vol_org)) / (np.max(data_vol_org) - np.min(data_vol_org))) * 4200
+        data_vol_org = ((data_vol_org - np.min(data_vol_org)) / (np.max(data_vol_org) - np.min(data_vol_org))) * 4200
 
         rmin, rmax, cmin, cmax, zmin, zmax = bbox2_3D(data_seg, 10)
+        if rmin < 0:
+            rmin = 0
+        if cmin < 0:
+            cmin = 0
+        if zmin < 0:
+            zmin = 0
+
         data_vol = data_vol[rmin:rmax,cmin:cmax,zmin:zmax]
         data_seg = data_seg[rmin:rmax,cmin:cmax,zmin:zmax]
         size = data_seg.shape
-
+        data_vol = data_vol.astype(int)
+        data_vol_org = data_vol_org.astype(int)
         # Loop through axial slices, make 3-channel scan, single channel mask
         for i in range(0,size[2]):
             img = data_vol[:,:,i]
@@ -163,11 +206,8 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_img_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
 
-            if FLAGS.structure == 'parotids':
-                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
-                stacked_img_1 = bit_conversion(img_ax, stacked_img_1, LUT, FLAGS.structure)
-            elif FLAGS.structure == 'bladder':
-                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+            if FLAGS.structure == 'parotids' or FLAGS.structure == 'bladder' or FLAGS.structure == 'rectum':
+                LUT = np.arange(np.max(data_vol_org) - np.min(data_vol_org) + 1)
                 stacked_img_1 = bit_conversion(img_ax, stacked_img_1, LUT, FLAGS.structure)
             else:
                 stacked_img_1[:,:,0] = img_ax
@@ -195,11 +235,8 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_sag_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_sag_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
 
-            if FLAGS.structure == 'parotids':
-                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
-                stacked_sag_1 = bit_conversion(img_sag, stacked_sag_1, LUT, FLAGS.structure)
-            elif FLAGS.structure == 'bladder':
-                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+            if FLAGS.structure == 'parotids' or FLAGS.structure == 'bladder' or FLAGS.structure == 'rectum':
+                LUT = np.arange(np.max(data_vol_org) - np.min(data_vol_org) + 1)
                 stacked_sag_1 = bit_conversion(img_sag, stacked_sag_1, LUT, FLAGS.structure)
             else:
                 stacked_sag_1[:,:,0] = img_sag
@@ -227,11 +264,8 @@ def data_export(data_vol, data_seg, save_path, p_num, cerrIO, struct_name):
             stacked_cor_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
             stacked_cor_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
 
-            if FLAGS.structure == 'parotids':
-                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
-                stacked_cor_1 = bit_conversion(img_cor, stacked_cor_1, LUT, FLAGS.structure)
-            elif FLAGS.structure == 'bladder':
-                LUT = np.arange(np.max(data_vol) - np.min(data_vol) + 1)
+            if FLAGS.structure == 'parotids' or FLAGS.structure == 'bladder' or FLAGS.structure == 'rectum':
+                LUT = np.arange(np.max(data_vol_org) - np.min(data_vol_org) + 1)
                 stacked_cor_1 = bit_conversion(img_cor, stacked_cor_1, LUT, FLAGS.structure)
             else:
                 stacked_cor_1[:,:,0] = img_cor
@@ -420,7 +454,8 @@ def main(unused_argv):
                         try:
                              CT_files.remove(RS_Files[p_num])
                         except:
-                             print('RS not found in CT list')
+                             CT_files = CT_files
+
                         if CT_files:
 
                             ## Open first CT image, get size, total number of files and
