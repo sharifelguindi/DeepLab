@@ -41,7 +41,7 @@ EXP_FOLDER="exp/axial${DATE}"
 TF_RECORD="tfrecord_ax"
 train_set="train_ax"
 val_set="val_ax"
-max_iterations=20001
+max_iterations=40001
 print_results=1000
 
 # Loop through total interations
