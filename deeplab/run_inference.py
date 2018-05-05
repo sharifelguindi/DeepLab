@@ -70,10 +70,10 @@ def bit_conversion(img, stacked_img_1, LUT, structure):
             LUT_3[i] = np.int((255. / 500) * LUT_3[i] - 408)
 
     img = img.astype(int)
+
     stacked_img_1[:, :, 0] = LUT_1[img]
     stacked_img_1[:, :, 1] = LUT_2[img]
     stacked_img_1[:, :, 2] = LUT_3[img]
-
     return stacked_img_1
 
 def find(pattern, path):

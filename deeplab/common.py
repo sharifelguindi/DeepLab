@@ -17,7 +17,6 @@
 Common flags from train/eval/vis/export_model.py are collected in this script.
 """
 import collections
-
 import tensorflow as tf
 
 flags = tf.app.flags

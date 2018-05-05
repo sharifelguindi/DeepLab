@@ -7,6 +7,9 @@
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
+          <excludedPaths>
+            <excludedPath path="/.*" />
+          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="semantic_seg">

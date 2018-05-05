@@ -10,7 +10,7 @@
 #   --cerr=False
 #   --rawdata_dir='path\to\data\'
 #   --save_dir='path\to\save\'
-#   --strcuture='structure_name_to_search_for'
+#   --structure='structure_name_to_search_for'
 
 from __future__ import print_function
 import dicom
@@ -18,13 +18,16 @@ from shapely import geometry
 import numpy as np
 from PIL import Image, ImageDraw
 import os, fnmatch
-from scipy.misc import imsave, imrotate
+from scipy.misc import imsave, imrotate, toimage
 import tensorflow as tf
 import h5py
 import sys
 import glob
 import math
 import build_data
+from functions import *
+from image_augmentation import *
+import cv2
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -36,7 +39,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_boolean('cerr', False,
                      'Set to true to collect data based on .mat CERR files.')
 
-flags.DEFINE_integer('num_shards', 2,
+flags.DEFINE_integer('num_shards', 6,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
 flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\MRCAT_DATA',
@@ -51,112 +54,11 @@ flags.DEFINE_string('structure', 'rectum',
 flags.DEFINE_string('structure_match', 'Rectum_O',
                     'string name for structure match')
 
-def bit_conversion(img, stacked_img_1, LUT, structure):
-
-    if structure == 'parotids':
-        w1_low = 0
-        w1_high = 2000
-        w2_low = 850
-        w2_high = 1150
-        w3_low = 950
-        w3_high = 1250
-
-        LUT_1 = np.clip(LUT, w1_low, w1_high)
-        LUT_2 = np.clip(LUT,  w2_low, w2_high)
-        LUT_3 = np.clip(LUT,  w3_low, w3_high)
-        for i in range(0, len(LUT)):
-            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
-            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
-            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
-
-    elif structure == 'bladder':
-        w1_low = 0
-        w1_high = 1700
-        w2_low = 500
-        w2_high = 1200
-        w3_low = 1000
-        w3_high = 1700
-
-        LUT_1 = np.clip(LUT, w1_low, w1_high)
-        LUT_2 = np.clip(LUT,  w2_low, w2_high)
-        LUT_3 = np.clip(LUT,  w3_low, w3_high)
-        for i in range(0, len(LUT)):
-            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
-            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
-            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
-
-    elif structure == 'rectum':
-        w1_low = 0
-        w1_high = 1700
-        w2_low = 500
-        w2_high = 1200
-        w3_low = 1000
-        w3_high = 1700
-
-        LUT_1 = np.clip(LUT, w1_low, w1_high)
-        LUT_2 = np.clip(LUT,  w2_low, w2_high)
-        LUT_3 = np.clip(LUT,  w3_low, w3_high)
-        for i in range(0, len(LUT)):
-            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
-            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
-            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
-
-    img = img.astype(int)
-    stacked_img_1[:, :, 0] = LUT_1[img]
-    stacked_img_1[:, :, 1] = LUT_2[img]
-    stacked_img_1[:, :, 2] = LUT_3[img]
-
-    return stacked_img_1
-
-def bbox2_3D(img, pad):
-
-    r = np.any(img, axis=(1, 2))
-    c = np.any(img, axis=(0, 2))
-    z = np.any(img, axis=(0, 1))
-
-    rmin, rmax = np.where(r)[0][[0, -1]]
-    cmin, cmax = np.where(c)[0][[0, -1]]
-    zmin, zmax = np.where(z)[0][[0, -1]]
-
-    return rmin - pad, rmax + pad, cmin - pad, cmax + pad, zmin - pad, zmax + pad
-
-def getdataS(file):
-    dataS = list(file['dataS'])
-    return dataS
-
-def getlabelNamesS(file):
-    labelNameList = []
-    labelNamesS = list(file['dataS/labelNameC'])
-    for index in range(len(labelNamesS)):
-        s = 'dataS/labelNameC/' + labelNamesS[index]
-        currentName = list(file[s])
-        currentName = "".join([chr(item) for item in currentName])
-        labelNameList.append((currentName))
-    return labelNameList
-
-def getScanArray(file):
-    scandata = file.get('dataS/scan3M')
-    scandata_as_array = np.array(scandata)
-    return scandata_as_array
-
-def getMaskArray(file):
-    maskdata = file.get('dataS/labelM')
-    maskdata_as_array = np.array(maskdata)
-    return maskdata_as_array
-
-def getparamS(file):
-    paramList = []
-    p = list(file['dataS/paramS/'])
-    for index in range(len(p)):
-        s = 'dataS/paramS/' + p[index]
-        currentParam = list(file[s])
-        paramList = np.array(currentParam)
-    return paramList
-
 ## This function converts a 3D numpy array image and mask set into .png files for machine learning 2D input
 def data_export(data_vol_org, data_seg_org, save_path, p_num, cerrIO, struct_name):
 
     max_padding = 256
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
     ## Create folders to store images/masks
     save_path = os.path.join(save_path, struct_name, 'processed')
@@ -164,86 +66,94 @@ def data_export(data_vol_org, data_seg_org, save_path, p_num, cerrIO, struct_nam
         os.makedirs(os.path.join(save_path,'PNGImages'))
     if not os.path.exists(os.path.join(save_path, 'SegmentationClass')):
         os.makedirs(os.path.join(save_path, 'SegmentationClass'))
-    if not os.path.exists(os.path.join(save_path, 'SegmentationClassVis')):
-        os.makedirs(os.path.join(save_path, 'SegmentationClassVis'))
 
     ## If CERR flag, rotate image 90 degrees (not needed but easy)
     if cerrIO:
         data_vol_org = np.rot90(data_vol_org, axes=(2, 0))
         data_seg = np.rot90(data_seg_org, axes=(2, 0))
         ## For bilateral structure, convert to single class
-        data_seg[ data_seg > 1] = 1
+        data_seg[ data_seg > 1] = 0
     else:
         data_seg = data_seg_org
     ## Verify size of scan data and mask data equivalent
     if data_vol_org.shape == data_seg.shape:
 
-        data_vol = ((data_vol_org - np.min(data_vol_org)) / (np.max(data_vol_org) - np.min(data_vol_org))) * 4200
-        data_vol_org = ((data_vol_org - np.min(data_vol_org)) / (np.max(data_vol_org) - np.min(data_vol_org))) * 4200
-
-        rmin, rmax, cmin, cmax, zmin, zmax = bbox2_3D(data_seg, 10)
-        if rmin < 0:
-            rmin = 0
-        if cmin < 0:
-            cmin = 0
-        if zmin < 0:
-            zmin = 0
-
-        data_vol = data_vol[rmin:rmax,cmin:cmax,zmin:zmax]
-        data_seg = data_seg[rmin:rmax,cmin:cmax,zmin:zmax]
+        data_vol = normalize_array(data_vol_org)
         size = data_seg.shape
-        data_vol = data_vol.astype(int)
-        data_vol_org = data_vol_org.astype(int)
+        data_vol = data_vol.astype('uint8')
+        data_vol_org = data_vol_org.astype('uint16')
+
+        rmin, rmax, cmin, cmax, zmin, zmax = bbox2_3D(data_seg, 0)
+
+        offset_min = np.floor(max_padding / 2)
+        offset_max = np.ceil(max_padding / 2)
+        mid_r = int(((rmax - rmin) / 2) + rmin)
+        mid_c = int(((cmax - cmin) / 2) + cmin)
+        rrmin = int(mid_r - offset_min)
+        rrmax = int(mid_r + offset_max)
+        ccmin = int(mid_c - offset_min)
+        ccmax = int(mid_c + offset_max)
+
+        if rrmin < 0:
+            rrmin = 0
+        if rrmax > np.shape(data_vol_org)[0]:
+            rrmax = np.shape(data_vol_org)[0]
+        if ccmin < 0:
+            ccmin = 0
+        if ccmax > np.shape(data_vol_org)[1]:
+            ccmax = np.shape(data_vol_org)[1]
+
+        data_vol = data_vol[rrmin:rrmax, ccmin:ccmax, zmin:zmax]
+        data_seg = data_seg[rrmin:rrmax, ccmin:ccmax, zmin:zmax]
+        scan_shape = np.shape(data_vol)
         # Loop through axial slices, make 3-channel scan, single channel mask
-        for i in range(0,size[2]):
+        for i in range(0, scan_shape[2]):
             img = data_vol[:,:,i]
             contour = data_seg[:,:,i]
-            img_ax = np.pad(img, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
-                                  (int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2)))), 'constant', constant_values=0)
-            contour_ax = np.pad(contour, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
-                                  (int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2)))), 'constant', constant_values=255)
+            if scan_shape[0] < 256 or scan_shape[1] < 256:
+                img_ax = np.pad(img, ((int(np.floor((max_padding - scan_shape[0])/2)), int(np.ceil((max_padding - scan_shape[0])/2))),
+                                      (int(np.floor((max_padding - scan_shape[1])/2)), int(np.ceil((max_padding - scan_shape[1])/2)))), 'constant', constant_values=0)
+                contour_ax = np.pad(contour, ((int(np.floor((max_padding - scan_shape[0])/2)), int(np.ceil((max_padding - scan_shape[0])/2))),
+                                      (int(np.floor((max_padding - scan_shape[1])/2)), int(np.ceil((max_padding - scan_shape[1])/2)))), 'constant', constant_values=255)
+            elif scan_shape[0] == 256 and scan_shape[1] == 256:
+                img_ax = img
+                contour_ax = contour
+
             size_img = img_ax.shape
-            stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
+            stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int8)
             stacked_img_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
 
-            if FLAGS.structure == 'parotids' or FLAGS.structure == 'bladder' or FLAGS.structure == 'rectum':
-                LUT = np.arange(np.max(data_vol_org) - np.min(data_vol_org) + 1)
-                stacked_img_1 = bit_conversion(img_ax, stacked_img_1, LUT, FLAGS.structure)
-            else:
-                stacked_img_1[:,:,0] = img_ax
-                stacked_img_1[:,:,1] = img_ax
-                stacked_img_1[:,:,2] = img_ax
-
+            eq_img, stacked_img_1 = equalize(img_ax.astype('uint8'), stacked_img_1, clahe)
             stacked_img_2[:,:] = contour_ax
             unique, counts = np.unique(stacked_img_2, return_counts=True)
             vals = dict(zip(unique, counts))
             if 1 in vals:
-                img_name = os.path.join('PNGImages','ax' + str(p_num) + '_' + str(i) + '.png')
-                gt_name = os.path.join('SegmentationClass','ax' + str(p_num) + '_' + str(i) + '.png')
-                imsave(os.path.join(save_path,img_name), stacked_img_1)
-                imsave(os.path.join(save_path,gt_name), stacked_img_2)
+                img_name = os.path.join('PNGImages','ax' + str(p_num) + '_' + str(i))
+                gt_name = os.path.join('SegmentationClass','ax' + str(p_num) + '_' + str(i))
+
+                toimage(stacked_img_1, cmin=0, cmax=255).save(os.path.join(save_path,img_name + '.png'))
+                toimage(stacked_img_2, cmin=0, cmax=255).save(os.path.join(save_path, gt_name + '.png'))
+                img_aug = [stacked_img_1]
+                seg_aug = [stacked_img_2]
+                save_augmentations(img_aug, seg_aug, save_path, img_name, gt_name)
 
         # Loop through sagittal slices, make 3-channel scan, single channel mask, pad image to axial size
-        for i in range(0,size[1]):
+        for i in range(0, scan_shape[1]):
             img_sag = data_vol[:,i,:]
             contour_sag = data_seg[:,i,:]
-            img_sag = np.pad(img_sag,((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
-                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=0)
-            contour_sag = np.pad(contour_sag, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
-                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
-            size_img = img_sag.shape
-            stacked_sag_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
-            stacked_sag_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
+            # img_sag = np.pad(img_sag,((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
+            #                       (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=0)
+            # contour_sag = np.pad(contour_sag, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
+            #                       (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
+            # size_img = img_sag.shape
+            stacked_sag_1 = np.zeros((max_padding, max_padding, 3), dtype=np.int16)
+            stacked_sag_2 = np.zeros((max_padding, max_padding), dtype=np.uint8)
 
-            if FLAGS.structure == 'parotids' or FLAGS.structure == 'bladder' or FLAGS.structure == 'rectum':
-                LUT = np.arange(np.max(data_vol_org) - np.min(data_vol_org) + 1)
-                stacked_sag_1 = bit_conversion(img_sag, stacked_sag_1, LUT, FLAGS.structure)
-            else:
-                stacked_sag_1[:,:,0] = img_sag
-                stacked_sag_1[:,:,1] = img_sag
-                stacked_sag_1[:,:,2] = img_sag
+            img_sag = cv2.resize(img_sag[:, :], (256, 256))
+            stacked_sag_2[:, :] = cv2.resize(contour_sag[:, :], (256, 256))
 
-            stacked_sag_2[:,:] = contour_sag
+            eq_img, stacked_sag_1 = equalize(img_sag, stacked_sag_1, clahe)
+
             unique, counts = np.unique(stacked_sag_2, return_counts=True)
             vals = dict(zip(unique, counts))
             if 1 in vals:
@@ -253,26 +163,22 @@ def data_export(data_vol_org, data_seg_org, save_path, p_num, cerrIO, struct_nam
                 imsave(os.path.join(save_path,gt_name), stacked_sag_2)
 
         # Loop through coronal slices, make 3-channel scan, single channel mask, pad image to axial size
-        for i in range(0,size[0]):
+        for i in range(0,scan_shape[0]):
             img_cor = data_vol[i,:,:]
             contour_cor = data_seg[i,:,:]
-            img_cor = np.pad(img_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
-                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=0)
-            contour_cor = np.pad(contour_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
-                                  (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
-            size_img = img_cor.shape
-            stacked_cor_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int16)
-            stacked_cor_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
+            # img_cor = np.pad(img_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
+            #                       (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=0)
+            # contour_cor = np.pad(contour_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
+            #                       (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
+            # size_img = img_cor.shape
+            stacked_cor_1 = np.zeros((max_padding, max_padding, 3), dtype=np.int16)
+            stacked_cor_2 = np.zeros((max_padding, max_padding), dtype=np.uint8)
 
-            if FLAGS.structure == 'parotids' or FLAGS.structure == 'bladder' or FLAGS.structure == 'rectum':
-                LUT = np.arange(np.max(data_vol_org) - np.min(data_vol_org) + 1)
-                stacked_cor_1 = bit_conversion(img_cor, stacked_cor_1, LUT, FLAGS.structure)
-            else:
-                stacked_cor_1[:,:,0] = img_cor
-                stacked_cor_1[:,:,1] = img_cor
-                stacked_cor_1[:,:,2] = img_cor
+            img_cor = cv2.resize(img_cor[:, :], (256, 256))
+            stacked_sag_2[:, :] = cv2.resize(contour_sag[:, :], (256, 256))
 
-            stacked_cor_2[:,:] = contour_cor
+            eq_img, stacked_cor_1 = equalize(img_cor, stacked_cor_1, clahe)
+
             unique, counts = np.unique(stacked_cor_2, return_counts=True)
             vals = dict(zip(unique, counts))
             if 1 in vals:
@@ -282,19 +188,6 @@ def data_export(data_vol_org, data_seg_org, save_path, p_num, cerrIO, struct_nam
                 imsave(os.path.join(save_path,gt_name), stacked_cor_2)
 
     return
-
-def find(pattern, path):
-    result = []
-    for root, dirs, files in os.walk(path):
-        for name in files:
-            if fnmatch.fnmatch(name, pattern):
-                result.append(os.path.join(root, name))
-    return result
-
-def find_file(name, path):
-    for root, dirs, files in os.walk(path):
-        if name in files:
-            return os.path.join(root, name)
 
 def create_tfrecord(structure_path):
 
@@ -425,113 +318,24 @@ def main(unused_argv):
             return
 
     else:
-        ## Collect list of structure set files in specified path dir, "RS_Files".  Relies on structure
-        ## set labeling prepended with "RS" convention.
-        RS_Files = find('RS.*.dcm', data_path)
 
-        ## Start loop through each file (p_num = patient number)
-        if RS_Files:
-            for p_num in range(0, len(RS_Files)):
+        p_num = 1
+        d_img, d_ss = collect_dicom('*.dcm', data_path)
+        ## Start loop through each RS file, if found (p_num = patient number)
+        sys.stdout.write('\n')
+        if d_ss.keys():
+            for rs_file in d_ss.keys():
 
-                ## Read RS file into dicom class, ss
-                ss = dicom.read_file(RS_Files[p_num])
+                scan, mask = load_dicom_toarray(d_ss[rs_file][0], d_img[rs_file], FLAGS.structure_match)
+                sys.stdout.write('\r>> Exporting patient %d of %d' % (p_num, len(d_ss.keys())))
+                sys.stdout.flush()
+                data_export(scan, mask, FLAGS.save_dir, p_num, FLAGS.cerr, FLAGS.structure)
+                p_num = p_num + 1
 
-                ## k is numerical counter for structures in file (resets for each RS file)
-                k = 0
-                ## Start loop through each structure in RS file
-                for item in ss.StructureSetROISequence[:]:
-
-                    ## Check if structure is equal to specified structure name
-                    if FLAGS.structure_match in item.ROIName:
-                         ## ss_maxslice: determines maximum number of image slices contour lives on
-                        ss_maxslice = len(ss.ROIContours[k].Contours)
-
-                        ## pattern collects referenced SOP for DICOM collection, searched dir for CT_files list
-                        pattern = ss.ROIContours[k].Contours[0].ContourImageSequence[0].ReferencedSOPInstanceUID
-                        pattern = '*' + '.'.join(pattern.split('.')[:-2])
-                        pattern = pattern[:-3] + '*'
-                        CT_files = find(pattern, data_path)
-                        try:
-                             CT_files.remove(RS_Files[p_num])
-                        except:
-                             CT_files = CT_files
-
-                        if CT_files:
-
-                            ## Open first CT image, get size, total number of files and
-                            ## initialize Numpy Arrays for data collection
-                            ct_maxslice = len(CT_files)
-                            img = dicom.read_file(CT_files[0])
-                            img_size = np.shape(img.pixel_array)
-                            im_mask = np.zeros((img_size[0], img_size[1], ct_maxslice))
-                            im_data = np.zeros((img_size[0], img_size[1], ct_maxslice))
-                            z0 = img.ImagePositionPatient[2]
-
-                            ## Since DICOM files are not in spatial order, determine
-                            ## "z0" or starting z position
-                            for slice in range(0, ct_maxslice):
-                                img = dicom.read_file(CT_files[slice])
-                                if z0 > img.ImagePositionPatient[2]:
-                                    z0 = img.ImagePositionPatient[2]
-
-                            ## Start loop through each CT slice found
-                            for slice in range(0, ct_maxslice):
-
-                                ## Read pixel array and image location, convert to numpy reference frame
-                                ## and place into im_data as appropriate location
-                                img = dicom.read_file(CT_files[slice])
-                                z_prime = float(img.ImagePositionPatient[2])
-                                zsp = float(img.SliceThickness)
-                                z = int((z_prime - z0) / zsp)
-                                im_data[:, :, z] = img.pixel_array
-
-                                ## Start for loop through strucutre set point lists
-                                ## ss_maxslice is the number of contour objects for structure in question
-                                for j in range(0, ss_maxslice):
-
-                                    ## check CT file name against reference UID in contour object
-                                    if CT_files[slice].split(os.sep)[-1] == ss.ROIContours[k].Contours[j].ContourImageSequence[0].ReferencedSOPInstanceUID + '.dcm' or \
-                                       CT_files[slice].split(os.sep)[-1] == 'MR.' + ss.ROIContours[k].Contours[j].ContourImageSequence[0].ReferencedSOPInstanceUID + '.dcm':
-                                        ## Initialize point list and determin x,y,z pixel spacing, dicom positioning
-                                        pointList = []
-                                        x_y = np.array(img.ImagePositionPatient)
-                                        xsp_ysp = np.array(img.PixelSpacing)
-                                        zsp = float(img.SliceThickness)
-                                        size = len(ss.ROIContours[k].Contours[j].ContourData)
-
-                                        ## For loop converts point list to numpy reference frame at appropriate
-                                        ## z locations
-                                        for i in range(0, size, 3):
-                                            x_prime = float(ss.ROIContours[k].Contours[j].ContourData[i])
-                                            y_prime = float(ss.ROIContours[k].Contours[j].ContourData[i+1])
-                                            x = (x_prime - x_y[0])/xsp_ysp[0]
-                                            y = (y_prime - x_y[1])/xsp_ysp[1]
-                                            p = geometry.Point(x , y)
-                                            pointList.append(p)
-
-                                        ## Use Shapely package to convert list of points to image mask
-                                        ## at slice z, with pixel inside polygon equal 1, else 0.
-                                        poly = geometry.Polygon([[pt.x, pt.y] for pt in pointList])
-                                        x, y = poly.exterior.coords.xy
-                                        pointsList_new = []
-                                        for pp in range(0, len(x)):
-                                            pointsList_new.append(x[pp])
-                                            pointsList_new.append(y[pp])
-                                        m = Image.new('L', (img_size[0], img_size[1]), 0)
-                                        ImageDraw.Draw(m).polygon(pointsList_new, outline=1, fill=1)
-                                        mask = np.array(m)
-                                        z = int(np.round(z))
-                                        im_mask[:,:,z] = mask
-
-                        sys.stdout.write('\r>> Exporting patient %d of %d' % (p_num+1, len(RS_Files)))
-                        sys.stdout.flush()
-                        data_export(im_data, im_mask, FLAGS.save_dir, p_num, FLAGS.cerr, FLAGS.structure)
-
-                    ## Iterate over contour
-                    k = k + 1
             print('\n')
             print("Update segemntation_dataset.py with new class and values")
             create_tfrecord(os.path.join(FLAGS.save_dir, FLAGS.structure))
+
         else:
             print('Directory specified contains no RS files')
 
@@ -540,3 +344,4 @@ if __name__ == '__main__':
   # flags.mark_flag_as_required('save_dir')
   # flags.mark_flag_as_required('structure')
   tf.app.run()
+
