@@ -87,8 +87,8 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
 
 _BLADDER_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 761,
-        'val_ax': 45,
+        'train_ax': 54162,
+        'val_ax': 2295,
         'train_cor': 5082,
         'val_cor': 351,
         'train_sag': 4366,
@@ -100,8 +100,8 @@ _BLADDER_SEG_INFORMATION = DatasetDescriptor(
 
 _RECTUM_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 1059,
-        'val_ax': 65,
+        'train_ax': 79050,
+        'val_ax': 3621,
         'train_cor': 3001,
         'val_cor': 165,
         'train_sag': 2543,
@@ -152,8 +152,8 @@ _PAROTID_SEG_INFORMATION = DatasetDescriptor(
 
 _PROSTATE_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train_ax': 529,
-        'val_ax': 34,
+        'train_ax': 40698,
+        'val_ax': 1683,
         'train_cor': 3084,
         'val_cor': 192,
         'train_sag': 3237,

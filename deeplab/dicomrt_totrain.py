@@ -28,7 +28,11 @@ import build_data
 from functions import *
 from image_augmentation import *
 import cv2
+from transforms import *
+from numpy.random import RandomState
 
+
+PRNG = RandomState()
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
@@ -36,29 +40,50 @@ FLAGS = flags.FLAGS
 # 'H:\\Treatment Planning\\Elguindi\\Segmentation\\CERR IO\\\mat files',
 # 'H:\\Treatment Planning\\Elguindi\\Segmentation\\MRCAT_DATA'
 
-flags.DEFINE_boolean('cerr', False,
+flags.DEFINE_boolean('cerr', True,
                      'Set to true to collect data based on .mat CERR files.')
 
-flags.DEFINE_integer('num_shards', 6,
+flags.DEFINE_integer('num_shards', 1,
                      'Split train/val data into chucks if large dateset >2-3000 (default, 1)')
 
-flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\MRCAT_DATA',
+flags.DEFINE_string('rawdata_dir', 'H:\\Treatment Planning\\Elguindi\\Segmentation\\CERR IO\\mat files',
                     'absolute path to where raw data is collected from.')
 
 flags.DEFINE_string('save_dir', 'datasets',
                     'absolute path to where processed data is saved.')
 
-flags.DEFINE_string('structure', 'rectum',
+flags.DEFINE_string('structure', 'parotids_inv',
                     'string name of structure to export')
 
-flags.DEFINE_string('structure_match', 'Rectum_O',
+flags.DEFINE_string('structure_match', 'Parotid',
                     'string name for structure match')
 
 ## This function converts a 3D numpy array image and mask set into .png files for machine learning 2D input
 def data_export(data_vol_org, data_seg_org, save_path, p_num, cerrIO, struct_name):
 
-    max_padding = 256
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    max_padding = 312
+    scale_factor = 256
+    strt = int((max_padding - scale_factor) / 2)
+    stop = int(strt + scale_factor)
+    clahe = cv2.createCLAHE(clipLimit=10, tileGridSize=(8, 8))
+    transform = Compose([
+        # [ColorJitter(), None],
+        Merge(),
+        Expand((0.5, 1.5)),
+        RandomCompose([
+            RandomResize(0.5, 1.5),
+            RandomRotate(30),
+            RandomShift(0.2)]),
+        Scale(scale_factor),
+        ElasticTransform(150),
+        RandomCrop(scale_factor),
+        HorizontalFlip(),
+        Split([0, 3], [3, 6]),
+    ],
+        PRNG,
+        border='constant',
+        fillval=0,
+        anchor_index=3)
 
     ## Create folders to store images/masks
     save_path = os.path.join(save_path, struct_name, 'processed')
@@ -66,13 +91,15 @@ def data_export(data_vol_org, data_seg_org, save_path, p_num, cerrIO, struct_nam
         os.makedirs(os.path.join(save_path,'PNGImages'))
     if not os.path.exists(os.path.join(save_path, 'SegmentationClass')):
         os.makedirs(os.path.join(save_path, 'SegmentationClass'))
+    if not os.path.exists(os.path.join(save_path, 'SegmentationVis')):
+        os.makedirs(os.path.join(save_path, 'SegmentationVis'))
 
     ## If CERR flag, rotate image 90 degrees (not needed but easy)
     if cerrIO:
         data_vol_org = np.rot90(data_vol_org, axes=(2, 0))
         data_seg = np.rot90(data_seg_org, axes=(2, 0))
         ## For bilateral structure, convert to single class
-        data_seg[ data_seg > 1] = 0
+        data_seg[ data_seg > 1] = 1
     else:
         data_seg = data_seg_org
     ## Verify size of scan data and mask data equivalent
@@ -110,82 +137,101 @@ def data_export(data_vol_org, data_seg_org, save_path, p_num, cerrIO, struct_nam
         for i in range(0, scan_shape[2]):
             img = data_vol[:,:,i]
             contour = data_seg[:,:,i]
-            if scan_shape[0] < 256 or scan_shape[1] < 256:
+            if scan_shape[0] < max_padding or scan_shape[1] < max_padding:
                 img_ax = np.pad(img, ((int(np.floor((max_padding - scan_shape[0])/2)), int(np.ceil((max_padding - scan_shape[0])/2))),
                                       (int(np.floor((max_padding - scan_shape[1])/2)), int(np.ceil((max_padding - scan_shape[1])/2)))), 'constant', constant_values=0)
                 contour_ax = np.pad(contour, ((int(np.floor((max_padding - scan_shape[0])/2)), int(np.ceil((max_padding - scan_shape[0])/2))),
-                                      (int(np.floor((max_padding - scan_shape[1])/2)), int(np.ceil((max_padding - scan_shape[1])/2)))), 'constant', constant_values=255)
-            elif scan_shape[0] == 256 and scan_shape[1] == 256:
+                                      (int(np.floor((max_padding - scan_shape[1])/2)), int(np.ceil((max_padding - scan_shape[1])/2)))), 'constant', constant_values=0)
+            elif scan_shape[0] == max_padding and scan_shape[1] == max_padding:
                 img_ax = img
                 contour_ax = contour
 
             size_img = img_ax.shape
             stacked_img_1 = np.zeros((size_img[0], size_img[1], 3), dtype=np.int8)
-            stacked_img_2 = np.zeros((size_img[0], size_img[1]), dtype=np.uint8)
-
+            stacked_img_2 = np.zeros((size_img[0], size_img[1], 1), dtype=np.uint8)
             eq_img, stacked_img_1 = equalize(img_ax.astype('uint8'), stacked_img_1, clahe)
-            stacked_img_2[:,:] = contour_ax
+            stacked_img_2[:,:,0] = contour_ax
             unique, counts = np.unique(stacked_img_2, return_counts=True)
             vals = dict(zip(unique, counts))
             if 1 in vals:
                 img_name = os.path.join('PNGImages','ax' + str(p_num) + '_' + str(i))
                 gt_name = os.path.join('SegmentationClass','ax' + str(p_num) + '_' + str(i))
+                vis_name = os.path.join('SegmentationVis','ax' + str(p_num) + '_' + str(i))
+                # stacked_img_1 = 255 - stacked_img_1
+                stacked_img_1[:,:,0] = 255 - stacked_img_1[:,:,0]
+                # stacked_img_1[:,:,1] = 255 - stacked_img_1[:,:,1]
+                toimage(stacked_img_1[strt:stop,strt:stop,:], cmin=0, cmax=255).save(os.path.join(save_path,img_name + '.png'))
+                toimage(stacked_img_2[strt:stop,strt:stop,0], cmin=0, cmax=255).save(os.path.join(save_path, gt_name + '.png'))
 
-                toimage(stacked_img_1, cmin=0, cmax=255).save(os.path.join(save_path,img_name + '.png'))
-                toimage(stacked_img_2, cmin=0, cmax=255).save(os.path.join(save_path, gt_name + '.png'))
-                img_aug = [stacked_img_1]
-                seg_aug = [stacked_img_2]
-                save_augmentations(img_aug, seg_aug, save_path, img_name, gt_name)
+                seg_vis = np.zeros([scale_factor, scale_factor, 1])
+                seg_vis[:,:,0] = stacked_img_2[strt:stop,strt:stop,0]
+                seg_vis[seg_vis == 1 ] = 200
+                seg_vis = np.repeat(seg_vis, 3, axis=2)
+                toimage(seg_vis, cmin=0, cmax=255).save(os.path.join(save_path, vis_name + '.png'))
 
-        # Loop through sagittal slices, make 3-channel scan, single channel mask, pad image to axial size
-        for i in range(0, scan_shape[1]):
-            img_sag = data_vol[:,i,:]
-            contour_sag = data_seg[:,i,:]
-            # img_sag = np.pad(img_sag,((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
-            #                       (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=0)
-            # contour_sag = np.pad(contour_sag, ((int(np.floor((max_padding - size[0])/2)), int(np.ceil((max_padding - size[0])/2))),
-            #                       (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
-            # size_img = img_sag.shape
-            stacked_sag_1 = np.zeros((max_padding, max_padding, 3), dtype=np.int16)
-            stacked_sag_2 = np.zeros((max_padding, max_padding), dtype=np.uint8)
+                # zz = 0
+                # while zz < 20:
+                #     try:
+                #         transformed_image, transformed_target = transform(stacked_img_1, stacked_img_2)
+                #         transformed_image[np.where((transformed_image == [255, 0, 0]).all(axis=2))] = [255, 255, 255]
+                #         transformed_target[transformed_target == 255] = 0
+                #         # img_transformed = np.zeros((scale_factor, scale_factor, 3), dtype=np.int8)
+                #         # eq_img, img_transformed = equalize(transformed_image[:,:,0], img_transformed, clahe)
+                #         # img_transformed = 255 - img_transformed
+                #         toimage(transformed_image, cmin=0, cmax=255).save(os.path.join(save_path, img_name + '_' + str(zz) + '.png'))
+                #         toimage(transformed_target[:, :, 0], cmin=0, cmax=255).save(os.path.join(save_path, gt_name + '_' + str(zz) + '.png'))
+                #         seg_vis = np.zeros([scale_factor, scale_factor, 1])
+                #         seg_vis[:, :, 0] = transformed_target[:, :, 0]
+                #         seg_vis[seg_vis == 1] = 200
+                #         seg_vis = np.repeat(seg_vis, 3, axis=2)
+                #         toimage(seg_vis, cmin=0, cmax=255).save(os.path.join(save_path, vis_name + '_' + str(zz) + '.png'))
+                #         zz = zz + 1
+                #     except:
+                #         "Assertion Error on transformation, trying again"
 
-            img_sag = cv2.resize(img_sag[:, :], (256, 256))
-            stacked_sag_2[:, :] = cv2.resize(contour_sag[:, :], (256, 256))
+                # img_aug = [stacked_img_1]
+                # seg_aug = [stacked_img_2]
+                # save_augmentations(img_aug, seg_aug, save_path, img_name, gt_name)
 
-            eq_img, stacked_sag_1 = equalize(img_sag, stacked_sag_1, clahe)
-
-            unique, counts = np.unique(stacked_sag_2, return_counts=True)
-            vals = dict(zip(unique, counts))
-            if 1 in vals:
-                img_name = os.path.join('PNGImages','sag' + str(p_num) + '_' + str(i) + '.png')
-                gt_name = os.path.join('SegmentationClass','sag' + str(p_num) + '_' + str(i) + '.png')
-                imsave(os.path.join(save_path,img_name), stacked_sag_1)
-                imsave(os.path.join(save_path,gt_name), stacked_sag_2)
-
-        # Loop through coronal slices, make 3-channel scan, single channel mask, pad image to axial size
-        for i in range(0,scan_shape[0]):
-            img_cor = data_vol[i,:,:]
-            contour_cor = data_seg[i,:,:]
-            # img_cor = np.pad(img_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
-            #                       (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=0)
-            # contour_cor = np.pad(contour_cor, ((int(np.floor((max_padding - size[1])/2)), int(np.ceil((max_padding - size[1])/2))),
-            #                       (int(np.floor((max_padding - size[2])/2)), int(np.ceil((max_padding - size[2])/2)))), 'constant', constant_values=255)
-            # size_img = img_cor.shape
-            stacked_cor_1 = np.zeros((max_padding, max_padding, 3), dtype=np.int16)
-            stacked_cor_2 = np.zeros((max_padding, max_padding), dtype=np.uint8)
-
-            img_cor = cv2.resize(img_cor[:, :], (256, 256))
-            stacked_sag_2[:, :] = cv2.resize(contour_sag[:, :], (256, 256))
-
-            eq_img, stacked_cor_1 = equalize(img_cor, stacked_cor_1, clahe)
-
-            unique, counts = np.unique(stacked_cor_2, return_counts=True)
-            vals = dict(zip(unique, counts))
-            if 1 in vals:
-                img_name = os.path.join('PNGImages','cor' + str(p_num) + '_' + str(i) + '.png')
-                gt_name = os.path.join('SegmentationClass','cor' + str(p_num) + '_' + str(i) + '.png')
-                imsave(os.path.join(save_path,img_name), stacked_cor_1)
-                imsave(os.path.join(save_path,gt_name), stacked_cor_2)
+        # # Loop through sagittal slices, make 3-channel scan, single channel mask, pad image to axial size
+        # for i in range(0, scan_shape[1]):
+        #     img_sag = data_vol[:,i,:]
+        #     contour_sag = data_seg[:,i,:]
+        #     stacked_sag_1 = np.zeros((max_padding, max_padding, 3), dtype=np.int16)
+        #     stacked_sag_2 = np.zeros((max_padding, max_padding), dtype=np.uint8)
+        #
+        #     img_sag = cv2.resize(img_sag[:, :], (256, 256))
+        #     stacked_sag_2[:, :] = cv2.resize(contour_sag[:, :], (256, 256))
+        #
+        #     eq_img, stacked_sag_1 = equalize(img_sag, stacked_sag_1, clahe)
+        #
+        #     unique, counts = np.unique(stacked_sag_2, return_counts=True)
+        #     vals = dict(zip(unique, counts))
+        #     if 1 in vals:
+        #         img_name = os.path.join('PNGImages','sag' + str(p_num) + '_' + str(i) + '.png')
+        #         gt_name = os.path.join('SegmentationClass','sag' + str(p_num) + '_' + str(i) + '.png')
+        #         imsave(os.path.join(save_path,img_name), stacked_sag_1)
+        #         imsave(os.path.join(save_path,gt_name), stacked_sag_2)
+        #
+        # # Loop through coronal slices, make 3-channel scan, single channel mask, pad image to axial size
+        # for i in range(0,scan_shape[0]):
+        #     img_cor = data_vol[i,:,:]
+        #     contour_cor = data_seg[i,:,:]
+        #     stacked_cor_1 = np.zeros((max_padding, max_padding, 3), dtype=np.int16)
+        #     stacked_cor_2 = np.zeros((max_padding, max_padding), dtype=np.uint8)
+        #
+        #     img_cor = cv2.resize(img_cor[:, :], (256, 256))
+        #     stacked_sag_2[:, :] = cv2.resize(contour_sag[:, :], (256, 256))
+        #
+        #     eq_img, stacked_cor_1 = equalize(img_cor, stacked_cor_1, clahe)
+        #
+        #     unique, counts = np.unique(stacked_cor_2, return_counts=True)
+        #     vals = dict(zip(unique, counts))
+        #     if 1 in vals:
+        #         img_name = os.path.join('PNGImages','cor' + str(p_num) + '_' + str(i) + '.png')
+        #         gt_name = os.path.join('SegmentationClass','cor' + str(p_num) + '_' + str(i) + '.png')
+        #         imsave(os.path.join(save_path,img_name), stacked_cor_1)
+        #         imsave(os.path.join(save_path,gt_name), stacked_cor_2)
 
     return
 
@@ -319,6 +365,7 @@ def main(unused_argv):
 
     else:
 
+        # create_tfrecord(os.path.join(FLAGS.save_dir, FLAGS.structure))
         p_num = 1
         d_img, d_ss = collect_dicom('*.dcm', data_path)
         ## Start loop through each RS file, if found (p_num = patient number)
@@ -327,9 +374,12 @@ def main(unused_argv):
             for rs_file in d_ss.keys():
 
                 scan, mask = load_dicom_toarray(d_ss[rs_file][0], d_img[rs_file], FLAGS.structure_match)
-                sys.stdout.write('\r>> Exporting patient %d of %d' % (p_num, len(d_ss.keys())))
+                sys.stdout.write('\r>> Exporting patient {} of {}, file: {} '.format(str(p_num), str(len(d_ss.keys())), d_ss[rs_file][0]))
                 sys.stdout.flush()
-                data_export(scan, mask, FLAGS.save_dir, p_num, FLAGS.cerr, FLAGS.structure)
+                if np.count_nonzero(mask):
+                    data_export(scan, mask, FLAGS.save_dir, p_num, FLAGS.cerr, FLAGS.structure)
+                else:
+                    sys.stdout.write('\r>> Structure not found for patient {}'.format(d_ss[rs_file][0]))
                 p_num = p_num + 1
 
             print('\n')

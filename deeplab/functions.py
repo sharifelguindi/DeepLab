@@ -37,7 +37,7 @@ def load_dicom_toarray(RS_File, img_list, structure_match):
         k = 0
         for item in ss.StructureSetROISequence[:]:
             ## Check if structure is equal to specified structure name
-            if item.ROIName == structure_match:
+            if structure_match in item.ROIName:
                 item_found = True
                 ss_maxslice = len(ss.ROIContours[k].Contours)
                 break;
@@ -254,3 +254,59 @@ def equalize(img, stacked_img, clahe):
     stacked_img[:, :, 2] = eq_img
 
     return eq_img, stacked_img.astype('uint8')
+
+def bit_conversion(img, stacked_img_1, LUT, structure):
+
+    if structure == 'parotid_L':
+        w1_low = 0
+        w1_high = 1700
+        w2_low = 500
+        w2_high = 1700
+        w3_low = 1000
+        w3_high = 1700
+        LUT_1 = np.clip(LUT, w1_low, w1_high)
+        LUT_2 = np.clip(LUT,  w2_low, w2_high)
+        LUT_3 = np.clip(LUT,  w3_low, w3_high)
+        for i in range(0, len(LUT)):
+            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
+            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
+            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
+
+    elif structure == 'bladder':
+        w1_low = 0
+        w1_high = 1700
+        w2_low = 500
+        w2_high = 1200
+        w3_low = 1000
+        w3_high = 1700
+
+        LUT_1 = np.clip(LUT, w1_low, w1_high)
+        LUT_2 = np.clip(LUT,  w2_low, w2_high)
+        LUT_3 = np.clip(LUT,  w3_low, w3_high)
+        for i in range(0, len(LUT)):
+            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
+            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
+            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
+
+    elif structure == 'rectum':
+        w1_low = 400
+        w1_high = 1500
+        w2_low = 400
+        w2_high = 1500
+        w3_low = 400
+        w3_high = 1500
+
+        LUT_1 = np.clip(LUT, w1_low, w1_high)
+        LUT_2 = np.clip(LUT,  w2_low, w2_high)
+        LUT_3 = np.clip(LUT,  w3_low, w3_high)
+        for i in range(0, len(LUT)):
+            LUT_1[i] = np.int((255. / (w1_high - w1_low)) * LUT_1[i] - ((255. / (w1_high - w1_low))*w1_low))
+            LUT_2[i] = np.int((255. / (w2_high - w2_low)) * LUT_2[i] - ((255. / (w2_high - w2_low))*w2_low))
+            LUT_3[i] = np.int((255. / (w2_high - w2_low)) * LUT_3[i] - ((255. / (w3_high - w3_low))*w3_low))
+
+    img = img.astype(int)
+    stacked_img_1[:, :, 0] = LUT_1[img]
+    stacked_img_1[:, :, 1] = LUT_2[img]
+    stacked_img_1[:, :, 2] = LUT_3[img]
+
+    return stacked_img_1
